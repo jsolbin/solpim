@@ -1,2 +1,2 @@
-# solpim
-TU Dublin Individual Project CMPU3018
+# Solpim - Graduation Artwork Archive
+### TU Dublin individual project
