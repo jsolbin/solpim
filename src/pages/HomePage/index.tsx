@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
+import { useNavigate } from 'react-router-dom'
 
 import Button from '@/components/Button'
 
@@ -41,6 +42,10 @@ const heroActionsSx: SxProps<Theme> = {
 }
 
 function HomePage() {
+  const navigate = useNavigate()
+  const goToGallery = () => navigate('/gallery')
+  const goToSubmit = () => navigate('/submit')
+
   return (
     <Box
       component="main"
@@ -60,10 +65,10 @@ function HomePage() {
         </Typography>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 2, sm: 3 }} sx={heroActionsSx}>
-          <Button sx={{ flex: 1 }}>
+          <Button onClick={goToGallery} sx={{ flex: 1 }}>
             Explore Works
           </Button>
-          <Button sx={{ flex: 1 }} variant="white">
+          <Button onClick={goToSubmit} sx={{ flex: 1 }} variant="white">
             Submit Your Work
           </Button>
         </Stack>
