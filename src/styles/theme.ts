@@ -7,6 +7,7 @@ export const theme = createTheme({
     mode: 'light',
     primary: {
       main: '#5E5549',
+      dark: '#4d463c',
     },
     secondary: {
       main: '#778984',
@@ -18,6 +19,10 @@ export const theme = createTheme({
     text: {
       primary: '#0f172a',
       secondary: '#475569',
+    },
+    action: {
+      disabled: '#64748b',
+      disabledBackground: '#e2e8f0',
     },
   },
   typography: {
@@ -51,6 +56,13 @@ export const theme = createTheme({
       fontFamily: fonts.heading,
       fontWeight: fontWeights.semibold,
       letterSpacing: '-0.02em',
+    },
+    body1: {
+      fontFamily: fonts.body,
+      fontSize: '1.125rem',
+      fontWeight: fontWeights.regular,
+      lineHeight: 1.4,
+      letterSpacing: '-0.015em',
     },
     button: {
       fontWeight: fontWeights.semibold,
