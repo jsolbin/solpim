@@ -89,6 +89,11 @@ function Header() {
     setProfileMenuAnchor(null)
   }
 
+  const goToProfile = () => {
+    closeProfileMenu()
+    navigate('/profile')
+  }
+
   const handleLogout = async () => {
     closeProfileMenu()
     await logout()
@@ -199,6 +204,12 @@ function Header() {
                     vertical: 'top',
                   }}
                 >
+                  <MenuItem
+                    onClick={goToProfile}
+                    sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
+                  >
+                    Edit profile
+                  </MenuItem>
                   <MenuItem
                     onClick={handleLogout}
                     sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
