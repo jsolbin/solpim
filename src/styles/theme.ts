@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles'
 
-import { fonts, fontWeights } from '@/styles/font'
+import { fontWeights, fonts } from '@/styles/font'
 
 export const theme = createTheme({
   palette: {

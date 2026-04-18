@@ -1,12 +1,14 @@
+import { useNavigate } from 'react-router-dom'
+
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
-import { useNavigate } from 'react-router-dom'
 
 import Button from '@/components/Button'
 
-const heroCopy = 'A curated archive of exceptional graduation works by emerging artists around the world'
+const heroCopy =
+  'A curated archive of exceptional graduation works by emerging artists around the world'
 
 const heroLayoutSx: SxProps<Theme> = {
   width: '100%',
@@ -58,13 +60,22 @@ function HomePage() {
       }}
     >
       <Stack spacing={{ xs: 4, md: 5.5 }} sx={heroLayoutSx}>
-        <Box component="img" src="/solpim_logo.png" alt="Solpim" sx={heroLogoSx} />
+        <Box
+          component="img"
+          src="/solpim_logo.png"
+          alt="Solpim"
+          sx={heroLogoSx}
+        />
 
         <Typography variant="body1" sx={heroCopySx}>
           {heroCopy}
         </Typography>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 2, sm: 3 }} sx={heroActionsSx}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={{ xs: 2, sm: 3 }}
+          sx={heroActionsSx}
+        >
           <Button onClick={goToGallery} sx={{ flex: 1 }}>
             Explore Works
           </Button>

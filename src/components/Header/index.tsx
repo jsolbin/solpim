@@ -1,7 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Stack from '@mui/material/Stack'
-import { useNavigate } from 'react-router-dom'
 
 const headerActionSx = {
   minHeight: 42,
@@ -10,7 +11,8 @@ const headerActionSx = {
   fontSize: '0.95rem',
   lineHeight: 1,
   border: '1px solid',
-  transition: 'background-color 180ms ease, border-color 180ms ease, color 180ms ease',
+  transition:
+    'background-color 180ms ease, border-color 180ms ease, color 180ms ease',
 }
 
 function Header() {
@@ -37,7 +39,12 @@ function Header() {
           py: 2.25,
         }}
       >
-        <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
+        <Stack
+          alignItems="center"
+          direction="row"
+          justifyContent="space-between"
+          spacing={2}
+        >
           <ButtonBase
             onClick={goToGallery}
             sx={{
@@ -62,20 +69,19 @@ function Header() {
           </ButtonBase>
 
           <Stack alignItems="center" direction="row" spacing={1.25}>
-            
-              <ButtonBase
-                onClick={goToLogin}
-                sx={{
-                  ...headerActionSx,
-                  borderColor: 'transparent',
-                  color: 'text.primary',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-              >
-                Login
-              </ButtonBase>
+            <ButtonBase
+              onClick={goToLogin}
+              sx={{
+                ...headerActionSx,
+                borderColor: 'transparent',
+                color: 'text.primary',
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                },
+              }}
+            >
+              Login
+            </ButtonBase>
 
             <ButtonBase
               onClick={goToSubmit}
