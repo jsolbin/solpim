@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
 import ArtworkCard from '@/components/Artwork'
+import { contentContainerSx, contentPageSx } from '@/styles/page'
 import type { Artwork as ArtworkItem } from '@/types/artwork'
 
 const galleryIntro = 'Gallery page intro copy'
@@ -106,21 +107,10 @@ const artworks: ArtworkItem[] = [
   },
 ]
 
-const pageSx = {
-  minHeight: '100vh',
-  px: { xs: 3, md: 5 },
-  py: { xs: 4, md: 6 },
-}
-
-const contentSx = {
-  maxWidth: '1200px',
-  mx: 'auto',
-}
-
 function GalleryPage() {
   return (
-    <Box component="main" sx={pageSx}>
-      <Stack spacing={4} sx={contentSx}>
+    <Box component="main" sx={contentPageSx}>
+      <Stack spacing={4} sx={contentContainerSx}>
         <Box>
           <Typography variant="h3">Gallery</Typography>
           <Typography sx={{ mt: 1 }} variant="body1">

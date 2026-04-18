@@ -9,81 +9,25 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { FirebaseError } from 'firebase/app'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 
 import Button from '@/components/Button'
-import {
-  DEFAULT_PROFILE_IMAGE_URL,
-  STUDENT_PROFILE_ICONS,
-} from '@/constants/profileIcons'
+import { DEFAULT_PROFILE_IMAGE_URL } from '@/constants/profileIcons'
 import { updateCurrentUserProfile } from '@/firebase/auth'
 import { auth, db } from '@/firebase/config'
+import { centeredPageSx, formFieldSx, formPageSx } from '@/styles/page'
 
-type ProfileRole = 'student' | 'visitor' | 'admin'
-
-interface ProfileImageOption {
-  label: string
-  value: string
-}
-
-const pageSx = {
-  minHeight: 'calc(100vh - 91px)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  px: 3,
-  py: { xs: 5, md: 7 },
-}
-
-const formSx = {
-  width: '100%',
-  maxWidth: 520,
-}
-
-const fieldSx = {
-  '& .MuiOutlinedInput-root': {
-    backgroundColor: 'background.paper',
-  },
-}
-
-const profileImageButtonSx = {
-  width: 84,
-  minHeight: 102,
-  flexDirection: 'column',
-  gap: 1,
-  borderRadius: '8px',
-  color: 'text.primary',
-  border: '1px solid',
-  borderColor: 'divider',
-  p: 1,
-  '&:hover': {
-    backgroundColor: 'action.hover',
-  },
-}
-
-const selectedProfileImageButtonSx = {
-  borderColor: 'primary.main',
-  backgroundColor: 'background.paper',
-}
-
-function getProfileErrorMessage(error: unknown) {
-  if (error instanceof FirebaseError) {
-    switch (error.code) {
-      case 'permission-denied':
-        return 'Firestore: permission denied while updating your profile.'
-      default:
-        return `${error.code}: ${error.message}`
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return 'Unable to update your profile. Please try again.'
-}
+import {
+  profileImageButtonSx,
+  selectedProfileImageButtonSx,
+} from './styles'
+import {
+  getProfileErrorMessage,
+  getProfileImageState,
+  type ProfileImageOption,
+  type ProfileRole,
+} from './utils'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -116,24 +60,14 @@ export default function ProfilePage() {
         typeof userProfile?.profileImageUrl === 'string'
           ? userProfile.profileImageUrl
           : user.photoURL
-      const visitorProfileImageOptions = [
-        { label: 'Default', value: DEFAULT_PROFILE_IMAGE_URL },
-        ...(googleProfileImageUrl
-          ? [{ label: 'Google', value: googleProfileImageUrl }]
-          : []),
-      ]
-      const nextProfileImageOptions =
-        userRole === 'student'
-          ? STUDENT_PROFILE_ICONS
-          : userRole === 'visitor'
-            ? visitorProfileImageOptions
-            : [{ label: 'Default', value: DEFAULT_PROFILE_IMAGE_URL }]
-      const nextProfileImageUrl =
-        nextProfileImageOptions.find(
-          (option) => option.value === savedProfileImageUrl
-        )?.value ??
-        nextProfileImageOptions[0]?.value ??
-        DEFAULT_PROFILE_IMAGE_URL
+      const {
+        profileImageOptions: nextProfileImageOptions,
+        profileImageUrl: nextProfileImageUrl,
+      } = getProfileImageState({
+        googleProfileImageUrl,
+        savedProfileImageUrl,
+        userRole,
+      })
 
       setProfileRole(userRole ?? null)
       setName(user.displayName || '')
@@ -173,8 +107,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <Box component="main" sx={pageSx}>
-      <Stack component="form" onSubmit={handleSubmit} spacing={3} sx={formSx}>
+    <Box component="main" sx={centeredPageSx}>
+      <Stack
+        component="form"
+        onSubmit={handleSubmit}
+        spacing={3}
+        sx={formPageSx}
+      >
         <Box>
           <Typography variant="h3">Edit profile</Typography>
           <Typography color="text.secondary" sx={{ mt: 1 }} variant="body1">
@@ -223,7 +162,7 @@ export default function ProfilePage() {
           label="Name"
           onChange={(event) => setName(event.target.value)}
           required
-          sx={fieldSx}
+          sx={formFieldSx}
           value={name}
         />
 
