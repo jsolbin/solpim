@@ -2,6 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -21,7 +22,9 @@ function SignupPage() {
     department,
     email,
     errorMessage,
+    handleGoogleSignUp,
     handleSubmit,
+    isGoogleSubmitting,
     isSubmitting,
     name,
     password,
@@ -140,9 +143,31 @@ function SignupPage() {
           value={confirmPassword}
         />
 
-        <Button disabled={isSubmitting} fullWidth type="submit">
+        <Button
+          disabled={isSubmitting || isGoogleSubmitting}
+          fullWidth
+          type="submit"
+        >
           {isSubmitting ? 'Creating account...' : 'Sign up'}
         </Button>
+
+        {accountType === 'visitor' ? (
+          <>
+            <Divider>or</Divider>
+
+            <Button
+              disabled={isSubmitting || isGoogleSubmitting}
+              fullWidth
+              onClick={handleGoogleSignUp}
+              type="button"
+              variant="white"
+            >
+              {isGoogleSubmitting
+                ? 'Connecting to Google...'
+                : 'Continue as visitor with Google'}
+            </Button>
+          </>
+        ) : null}
 
         <Typography color="text.secondary" textAlign="center" variant="body1">
           Already have an account?{' '}

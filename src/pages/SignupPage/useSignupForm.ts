@@ -6,7 +6,11 @@ import {
   DEFAULT_PROFILE_IMAGE_URL,
   STUDENT_PROFILE_ICONS,
 } from '@/constants/profileIcons'
-import { signUpStudentWithEmail, signUpVisitorWithEmail } from '@/firebase/auth'
+import {
+  loginVisitorWithGoogle,
+  signUpStudentWithEmail,
+  signUpVisitorWithEmail,
+} from '@/firebase/auth'
 
 import {
   getSignUpErrorMessage,
@@ -27,6 +31,7 @@ export function useSignupForm() {
     STUDENT_PROFILE_ICONS[0]?.value ?? DEFAULT_PROFILE_IMAGE_URL
   )
   const [errorMessage, setErrorMessage] = useState('')
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -111,13 +116,29 @@ export function useSignupForm() {
     }
   }
 
+  const handleGoogleSignUp = async () => {
+    setErrorMessage('')
+    setIsGoogleSubmitting(true)
+
+    try {
+      await loginVisitorWithGoogle()
+      navigate('/gallery')
+    } catch (error) {
+      setErrorMessage(getSignUpErrorMessage(error))
+    } finally {
+      setIsGoogleSubmitting(false)
+    }
+  }
+
   return {
     accountType,
     confirmPassword,
     department,
     email,
     errorMessage,
+    handleGoogleSignUp,
     handleSubmit,
+    isGoogleSubmitting,
     isSubmitting,
     name,
     password,

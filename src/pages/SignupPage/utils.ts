@@ -13,8 +13,14 @@ export function getSignUpErrorMessage(error: unknown) {
         return 'Email: enter your email address.'
       case 'auth/weak-password':
         return 'Password: use at least 6 characters.'
+      case 'auth/popup-closed-by-user':
+        return 'Google sign up was closed before it finished.'
+      case 'auth/popup-blocked':
+        return 'Google sign up popup was blocked by the browser.'
+      case 'auth/account-exists-with-different-credential':
+        return 'This email is already registered with another sign in method.'
       case 'auth/operation-not-allowed':
-        return 'Firebase Auth: email/password sign up is not enabled.'
+        return 'Firebase Auth: this sign up method is not enabled.'
       case 'auth/network-request-failed':
         return 'Network: check your internet connection and try again.'
       case 'auth/configuration-not-found':
