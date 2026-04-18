@@ -1,24 +1,41 @@
-export const accountTypeSx = {
-  flex: 1,
-  minHeight: 52,
+export const accountTypeToggleGroupSx = {
+  display: 'flex',
+  width: '100%',
   border: '1px solid',
   borderColor: 'divider',
   borderRadius: '8px',
-  color: 'text.primary',
   backgroundColor: 'background.paper',
-  transition: 'background-color 180ms ease, border-color 180ms ease',
-  '&:hover': {
-    backgroundColor: 'action.hover',
+  overflow: 'hidden',
+  p: 0.5,
+  '& .MuiToggleButtonGroup-grouped': {
+    flex: 1,
+    border: 0,
+    borderRadius: '6px',
+    margin: 0,
+    '&:not(:first-of-type)': {
+      borderLeft: 0,
+    },
   },
 }
 
-export const selectedAccountTypeSx = {
-  borderColor: 'primary.main',
-  backgroundColor: 'primary.main',
-  color: 'common.white',
+export const accountTypeToggleSx = {
+  minHeight: 68,
+  color: 'text.primary',
+  backgroundColor: 'transparent',
+  fontSize: '0.95rem',
+  fontWeight: 600,
+  textTransform: 'none',
+  transition:
+    'background-color 180ms ease, border-color 180ms ease, color 180ms ease',
   '&:hover': {
-    backgroundColor: 'primary.dark',
-    borderColor: 'primary.dark',
+    backgroundColor: 'action.hover',
+  },
+  '&.Mui-selected': {
+    backgroundColor: 'primary.main',
+    color: 'common.white',
+    '&:hover': {
+      backgroundColor: 'primary.dark',
+    },
   },
 }
 

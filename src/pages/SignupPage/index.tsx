@@ -57,15 +57,15 @@ function SignupPage() {
 
         {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
 
+        <AccountTypeSelector
+          accountType={accountType}
+          onChange={setAccountType}
+        />
+
         <ProfileImageSection
           accountType={accountType}
           onProfileImageChange={setProfileImageUrl}
           profileImageUrl={profileImageUrl}
-        />
-
-        <AccountTypeSelector
-          accountType={accountType}
-          onChange={setAccountType}
         />
 
         <TextField
