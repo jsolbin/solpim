@@ -1,4 +1,10 @@
-const systemSans = ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'] 
+const systemSans = [
+  'system-ui',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  '"Segoe UI"',
+  'sans-serif',
+]
 
 export const fonts = {
   body: ['Inter', ...systemSans].join(', '),

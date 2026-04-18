@@ -1,20 +1,30 @@
 import { createBrowserRouter } from 'react-router-dom'
-import HomePage from '@/pages/HomePage'
-import GalleryPage from '@/pages/GalleryPage'
+
+import Layout from '@/layouts'
+import AdminPage from '@/pages/AdminPage'
 import ArtworkDetailPage from '@/pages/ArtworkDetailPage'
+import GalleryPage from '@/pages/GalleryPage'
+import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
+import NotFoundPage from '@/pages/NotFoundPage'
+import ProfilePage from '@/pages/ProfilePage'
 import SignupPage from '@/pages/SignupPage'
 import SubmitArtworkPage from '@/pages/SubmitArtworkPage'
-import AdminPage from '@/pages/AdminPage'
-import NotFoundPage from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
-  { path: '/', element: <HomePage /> },
-  { path: '/gallery', element: <GalleryPage /> },
-  { path: '/artworks/:id', element: <ArtworkDetailPage /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/signup', element: <SignupPage /> },
-  { path: '/submit', element: <SubmitArtworkPage /> },
-  { path: '/admin', element: <AdminPage /> },
-  { path: '*', element: <NotFoundPage /> }
+  {
+    path: '/',
+    element: <Layout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'gallery', element: <GalleryPage /> },
+      { path: 'artworks/:id', element: <ArtworkDetailPage /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'signup', element: <SignupPage /> },
+      { path: 'submit', element: <SubmitArtworkPage /> },
+      { path: 'admin', element: <AdminPage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
 ])

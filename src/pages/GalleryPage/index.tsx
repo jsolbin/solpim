@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
 import ArtworkCard from '@/components/Artwork'
+import { contentContainerSx, contentPageSx } from '@/styles/page'
 import type { Artwork as ArtworkItem } from '@/types/artwork'
 
 const galleryIntro = 'Gallery page intro copy'
@@ -15,7 +16,8 @@ const artworks: ArtworkItem[] = [
     artistId: 'artist-1',
     categoryId: 'category-1',
     title: 'Urban Metamorphosis',
-    description: 'Mixed media work exploring density, memory, and urban change.',
+    description:
+      'Mixed media work exploring density, memory, and urban change.',
     thumbnailUrl: '/primary_default.png',
     thumbnailAlt: 'Urban Metamorphosis artwork',
     createdAt: '2026-03-23T10:00:00Z',
@@ -45,7 +47,8 @@ const artworks: ArtworkItem[] = [
     artistId: 'artist-3',
     categoryId: 'category-3',
     title: 'Glass',
-    description: 'A translucent composition using reflective surfaces and light.',
+    description:
+      'A translucent composition using reflective surfaces and light.',
     thumbnailUrl: '/artwork2.jpeg',
     thumbnailAlt: 'Glass artwork',
     createdAt: '2026-03-21T13:00:00Z',
@@ -60,7 +63,8 @@ const artworks: ArtworkItem[] = [
     artistId: 'artist-4',
     categoryId: 'category-4',
     title: 'Butterfly',
-    description: 'Printed illustration inspired by repetition and transformation.',
+    description:
+      'Printed illustration inspired by repetition and transformation.',
     thumbnailUrl: '/artwork3.webp',
     thumbnailAlt: 'Butterfly artwork',
     createdAt: '2026-03-20T11:00:00Z',
@@ -90,7 +94,8 @@ const artworks: ArtworkItem[] = [
     artistId: 'artist-6',
     categoryId: 'category-6',
     title: 'Digital art',
-    description: 'Digital composition experimenting with saturation and rhythm.',
+    description:
+      'Digital composition experimenting with saturation and rhythm.',
     thumbnailUrl: '/artwork6.jpg',
     thumbnailAlt: 'Digital art artwork',
     createdAt: '2026-03-18T08:00:00Z',
@@ -102,21 +107,10 @@ const artworks: ArtworkItem[] = [
   },
 ]
 
-const pageSx = {
-  minHeight: '100vh',
-  px: { xs: 3, md: 5 },
-  py: { xs: 4, md: 6 },
-}
-
-const contentSx = {
-  maxWidth: '1200px',
-  mx: 'auto',
-}
-
 function GalleryPage() {
   return (
-    <Box component="main" sx={pageSx}>
-      <Stack spacing={4} sx={contentSx}>
+    <Box component="main" sx={contentPageSx}>
+      <Stack spacing={4} sx={contentContainerSx}>
         <Box>
           <Typography variant="h3">Gallery</Typography>
           <Typography sx={{ mt: 1 }} variant="body1">

@@ -1,4 +1,6 @@
-import MuiButton, { type ButtonProps as MuiButtonProps } from '@mui/material/Button'
+import MuiButton, {
+  type ButtonProps as MuiButtonProps,
+} from '@mui/material/Button'
 import type { SxProps, Theme } from '@mui/material/styles'
 
 type ButtonVariant = 'primary' | 'white'
@@ -79,9 +81,20 @@ const buttonVariantSx = {
   },
 }
 
-function Button({ children, fullWidth = false, sx, variant = 'primary', ...props }: ButtonProps) {
+function Button({
+  children,
+  fullWidth = false,
+  sx,
+  variant = 'primary',
+  ...props
+}: ButtonProps) {
   const buttonSize = fullWidth ? buttonSizeSx.fullWidth : buttonSizeSx.default
-  const combinedSx = [baseButtonSx, buttonSize, buttonVariantSx[variant], sx] as SxProps<Theme>
+  const combinedSx = [
+    baseButtonSx,
+    buttonSize,
+    buttonVariantSx[variant],
+    sx,
+  ] as SxProps<Theme>
 
   return (
     <MuiButton

@@ -47,7 +47,12 @@ function ArtworkCard({ artwork }: ArtworkProps) {
   return (
     <Box sx={cardSx}>
       <Box sx={{ overflow: 'hidden' }}>
-        <Box component="img" src={artwork.thumbnailUrl} alt={artwork.thumbnailAlt} sx={imageSx} />
+        <Box
+          component="img"
+          src={artwork.thumbnailUrl}
+          alt={artwork.thumbnailAlt}
+          sx={imageSx}
+        />
       </Box>
 
       <Box className="artwork-overlay" sx={overlaySx}>
