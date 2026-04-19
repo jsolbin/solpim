@@ -1,7 +1,4 @@
-export type BlockchainProtectionStatus =
-  | 'pending'
-  | 'registered'
-  | 'failed'
+export type BlockchainProtectionStatus = 'pending' | 'registered' | 'failed'
 
 export type StorageProvider = 's3'
 
@@ -15,6 +12,7 @@ export interface S3ObjectReference {
 export interface BlockchainProtection {
   imageHash: string
   storage: S3ObjectReference
+  ipfsCid?: string
   status: BlockchainProtectionStatus
   blockchainTxHash?: string
   chainName?: string
