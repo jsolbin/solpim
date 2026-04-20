@@ -28,7 +28,7 @@ export interface FinalizeUploadRequestBody {
 
 export interface FinalizeUploadResponseBody {
   artworkId: string
-  status: 'submitted'
+  status: 'uploaded'
   verifiedStorage: {
     objectKey: string
     contentType: string
@@ -39,19 +39,49 @@ export interface FinalizeUploadResponseBody {
 
 export interface StoredArtworkDocument {
   artworkId: string
-  contentId: string
-  ownerUid: string
+  contentId?: string
+  ownerUid?: string
   title: string
   imageName: string
-  status: 'submitted'
+  protection: {
+    status:
+      | 'upload_requested'
+      | 'uploaded'
+      | 'hashing'
+      | 'pinned'
+      | 'chain_pending'
+      | 'registered'
+      | 'failed'
+    storage: S3StorageReference
+    requestedAt?: string
+    uploadedAt?: string
+    approvedAt?: string
+    hashingAt?: string
+    pinnedAt?: string
+    chainPendingAt?: string
+    registeredAt?: string
+    failedAt?: string
+    approvedBy?: string
+    imageHash?: string
+    ipfsCid?: string
+    blockchainTxHash?: string
+    chainName?: string
+    errorMessage?: string
+    verifiedStorage?: {
+      objectKey: string
+      contentType: string
+      contentLength: number
+      eTag?: string | null
+    }
+  }
   storage: S3StorageReference
-  verifiedStorage: {
+  verifiedStorage?: {
     objectKey: string
     contentType: string
     contentLength: number
-    eTag: string | null
+    eTag?: string | null
   }
-  submittedAt: string
+  submittedAt?: string
   createdAt: string
   updatedAt: string
 }

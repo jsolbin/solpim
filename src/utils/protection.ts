@@ -91,6 +91,49 @@ export async function requestFinalizeUpload(options: {
   return (await response.json()) as FinalizeUploadResponse
 }
 
+export async function requestApproveArtworkRegistration(options: {
+  artworkId: string
+  authToken: string
+}): Promise<{
+  artworkId: string
+  status: 'registered'
+  approvedBy: string
+  imageHash: string
+  ipfsCid: string
+  blockchainTxHash: string
+}> {
+  const { artworkId, authToken } = options
+  const endpoint = import.meta.env.VITE_APPROVE_ARTWORK_ENDPOINT
+
+  if (!endpoint) {
+    throw new Error(
+      'Missing VITE_APPROVE_ARTWORK_ENDPOINT. Set your admin approval API endpoint in environment variables.'
+    )
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({ artworkId }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await buildHttpErrorMessage(response))
+  }
+
+  return (await response.json()) as {
+    artworkId: string
+    status: 'registered'
+    approvedBy: string
+    imageHash: string
+    ipfsCid: string
+    blockchainTxHash: string
+  }
+}
+
 export async function generateImageHash(file: File): Promise<string> {
   const buffer = await file.arrayBuffer()
   const digest = await crypto.subtle.digest('SHA-256', buffer)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import Alert from '@mui/material/Alert'
@@ -8,19 +8,55 @@ import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
+import type { ProtectedArtworkRecord } from '@/types/blockchain'
+import { getProtectedArtworkById } from '@/firebase/firestore'
 import { contentContainerSx, contentPageSx } from '@/styles/page'
-import { getProtectedArtworkById } from '@/utils/protection'
 
 const statusChipColor = {
-  pending: 'warning',
+  upload_requested: 'info',
+  uploaded: 'warning',
+  hashing: 'warning',
+  pinned: 'info',
+  chain_pending: 'warning',
   registered: 'success',
   failed: 'error',
 } as const
 
 function ArtworkDetailPage() {
   const { id = '' } = useParams()
+  const [artwork, setArtwork] = useState<ProtectedArtworkRecord | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const artwork = useMemo(() => getProtectedArtworkById(id), [id])
+  useEffect(() => {
+    let isMounted = true
+
+    const loadArtwork = async () => {
+      setIsLoading(true)
+      const nextArtwork = await getProtectedArtworkById(id)
+
+      if (isMounted) {
+        setArtwork(nextArtwork)
+        setIsLoading(false)
+      }
+    }
+
+    void loadArtwork()
+
+    return () => {
+      isMounted = false
+    }
+  }, [id])
+
+  if (isLoading) {
+    return (
+      <Box component="main" sx={contentPageSx}>
+        <Stack spacing={4} sx={contentContainerSx}>
+          <Typography variant="h3">Artwork Detail</Typography>
+          <Typography color="text.secondary">Loading artwork...</Typography>
+        </Stack>
+      </Box>
+    )
+  }
 
   if (!artwork) {
     return (
@@ -46,7 +82,13 @@ function ArtworkDetailPage() {
           <Typography variant="h5">{artwork.title}</Typography>
           <Typography color="text.secondary">ID: {artwork.id}</Typography>
           <Typography color="text.secondary">
+            Content ID: {artwork.contentId ?? 'Not assigned yet'}
+          </Typography>
+          <Typography color="text.secondary">
             Uploaded file: {artwork.imageName}
+          </Typography>
+          <Typography color="text.secondary">
+            Owner: {artwork.ownerUid ?? 'Unknown'}
           </Typography>
         </Stack>
 
@@ -60,10 +102,16 @@ function ArtworkDetailPage() {
             sx={{ width: 'fit-content' }}
           />
           <Typography>
-            Chain: {protection.chainName ?? 'Not assigned yet'}
+            Requested at: {protection.requestedAt ?? 'Not assigned yet'}
           </Typography>
           <Typography>
-            Protected at: {protection.protectedAt ?? 'Not registered yet'}
+            Uploaded at: {protection.uploadedAt ?? 'Not uploaded yet'}
+          </Typography>
+          <Typography>
+            Approved at: {protection.approvedAt ?? 'Not approved yet'}
+          </Typography>
+          <Typography>
+            Chain: {protection.chainName ?? 'Not assigned yet'}
           </Typography>
           <Typography>
             Blockchain tx hash: {protection.blockchainTxHash ?? 'Not available'}
@@ -79,7 +127,7 @@ function ArtworkDetailPage() {
         <Stack spacing={1.5}>
           <Typography variant="h6">Integrity Metadata</Typography>
           <Typography sx={{ wordBreak: 'break-all' }}>
-            Image hash (SHA-256): {protection.imageHash}
+            Image hash (SHA-256): {protection.imageHash ?? 'Not computed yet'}
           </Typography>
           <Typography>
             IPFS CID: {protection.ipfsCid ?? 'Not assigned yet'}
@@ -92,7 +140,11 @@ function ArtworkDetailPage() {
             Object key: {protection.storage.objectKey}
           </Typography>
           <Typography>
-            Region: {protection.storage.region ?? 'Unknown'}
+            Region: {protection.storage.region}
+          </Typography>
+          <Typography>
+            Verified content length:{' '}
+            {protection.verifiedStorage?.contentLength ?? 'Not verified yet'}
           </Typography>
         </Stack>
       </Stack>

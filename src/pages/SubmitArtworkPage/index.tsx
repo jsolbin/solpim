@@ -10,12 +10,9 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { auth } from '@/firebase/config'
-import type { ProtectedArtworkRecord } from '@/types/blockchain'
 import {
-  generateImageHash,
   requestFinalizeUpload,
   requestPresignedUpload,
-  saveProtectedArtwork,
   uploadFileToPresignedUrl,
 } from '@/utils/protection'
 
@@ -72,31 +69,6 @@ function SubmitArtworkPage() {
         },
         authToken: idToken,
       })
-
-      const imageHash = await generateImageHash(file)
-      const mockIpfsCid = `bafy${imageHash.slice(0, 40)}`
-
-      const now = new Date().toISOString()
-      const txSuffix = imageHash.slice(0, 8)
-      const cidSuffix = mockIpfsCid.slice(0, 6)
-
-      const protectedRecord: ProtectedArtworkRecord = {
-        id: artworkId,
-        title: title.trim(),
-        imageName: file.name,
-        createdAt: now,
-        protection: {
-          imageHash,
-          storage,
-          ipfsCid: mockIpfsCid,
-          status: 'registered' as const,
-          blockchainTxHash: `0xmock${txSuffix}${cidSuffix}${Date.now().toString(16)}`,
-          chainName: 'polygon-amoy',
-          protectedAt: now,
-        },
-      }
-
-      saveProtectedArtwork(protectedRecord)
 
       navigate(`/artworks/${artworkId}`)
     } catch (error) {

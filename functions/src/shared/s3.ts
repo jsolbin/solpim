@@ -1,4 +1,5 @@
 import {
+  GetObjectCommand,
   HeadObjectCommand,
   HeadObjectCommandOutput,
   S3Client,
@@ -41,6 +42,30 @@ export async function headUploadedObject(
 
     throw error
   }
+}
+
+export async function getUploadedObjectBytes(
+  s3Client: S3Client,
+  storage: Pick<S3StorageReference, 'bucketName' | 'objectKey'>
+): Promise<Uint8Array> {
+  const result = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: storage.bucketName,
+      Key: storage.objectKey,
+    })
+  )
+
+  const body = result.Body as
+    | {
+        transformToByteArray?: () => Promise<Uint8Array>
+      }
+    | undefined
+
+  if (!body || typeof body.transformToByteArray !== 'function') {
+    throw new HttpError(500, 'Unable to read uploaded S3 object body.')
+  }
+
+  return await body.transformToByteArray()
 }
 
 function isS3NotFoundError(error: unknown): boolean {

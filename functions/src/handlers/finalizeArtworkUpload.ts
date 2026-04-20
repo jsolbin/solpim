@@ -62,6 +62,7 @@ export async function finalizeArtworkUploadHandler(
     const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(artworkId)
 
     let effectiveSubmittedAt = submittedAt
+    let effectiveCreatedAt = submittedAt
 
     await firestore.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(docRef)
@@ -75,10 +76,15 @@ export async function finalizeArtworkUploadHandler(
           )
         }
 
+        if (existing.ownerUid && existing.ownerUid !== ownerUid) {
+          throw new HttpError(403, 'Artwork owner mismatch.')
+        }
+
         effectiveSubmittedAt =
           typeof existing.submittedAt === 'string'
             ? existing.submittedAt
             : submittedAt
+        effectiveCreatedAt = existing.createdAt ?? submittedAt
       }
 
       const payload: StoredArtworkDocument = {
@@ -87,8 +93,21 @@ export async function finalizeArtworkUploadHandler(
         ownerUid,
         title,
         imageName,
-        status: 'submitted',
         storage,
+        protection: {
+          status: 'uploaded',
+          storage,
+          requestedAt:
+            (snapshot.data() as Partial<StoredArtworkDocument> | undefined)
+              ?.protection?.requestedAt ?? submittedAt,
+          uploadedAt: submittedAt,
+          verifiedStorage: {
+            objectKey: storage.objectKey,
+            contentType,
+            contentLength,
+            eTag: headResult.ETag ?? null,
+          },
+        },
         verifiedStorage: {
           objectKey: storage.objectKey,
           contentType,
@@ -96,9 +115,7 @@ export async function finalizeArtworkUploadHandler(
           eTag: headResult.ETag ?? null,
         },
         submittedAt: effectiveSubmittedAt,
-        createdAt: snapshot.exists
-          ? ((snapshot.data()?.createdAt as string | undefined) ?? submittedAt)
-          : submittedAt,
+        createdAt: effectiveCreatedAt,
         updatedAt: submittedAt,
       }
 
@@ -107,7 +124,7 @@ export async function finalizeArtworkUploadHandler(
 
     const result: FinalizeUploadResponseBody = {
       artworkId,
-      status: 'submitted',
+      status: 'uploaded',
       verifiedStorage: {
         objectKey: storage.objectKey,
         contentType,

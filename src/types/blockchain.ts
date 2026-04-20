@@ -1,4 +1,11 @@
-export type BlockchainProtectionStatus = 'pending' | 'registered' | 'failed'
+export type BlockchainProtectionStatus =
+  | 'upload_requested'
+  | 'uploaded'
+  | 'hashing'
+  | 'pinned'
+  | 'chain_pending'
+  | 'registered'
+  | 'failed'
 
 export type StorageProvider = 's3'
 
@@ -13,19 +20,36 @@ export interface ProtectedArtworkRecord {
   id: string
   title: string
   imageName: string
+  contentId?: string
+  ownerUid?: string
   createdAt: string
+  updatedAt?: string
   protection: BlockchainProtection
 }
 
 export interface BlockchainProtection {
-  imageHash: string
-  storage: S3ObjectReference
-  ipfsCid?: string
   status: BlockchainProtectionStatus
+  storage: S3ObjectReference
+  requestedAt?: string
+  uploadedAt?: string
+  approvedAt?: string
+  hashingAt?: string
+  pinnedAt?: string
+  chainPendingAt?: string
+  registeredAt?: string
+  failedAt?: string
+  approvedBy?: string
+  imageHash?: string
+  ipfsCid?: string
   blockchainTxHash?: string
   chainName?: string
-  protectedAt?: string
   errorMessage?: string
+  verifiedStorage?: {
+    objectKey: string
+    contentType: string
+    contentLength: number
+    eTag?: string | null
+  }
 }
 
 export interface PresignedUploadRequest {
@@ -51,7 +75,7 @@ export interface FinalizeUploadRequest {
 
 export interface FinalizeUploadResponse {
   artworkId: string
-  status: 'submitted'
+  status: 'uploaded'
   verifiedStorage: {
     objectKey: string
     contentType: string

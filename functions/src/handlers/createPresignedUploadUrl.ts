@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { getFirestore } from 'firebase-admin/firestore'
 
 import { verifyAuthTokenFromHeader } from '../shared/auth'
 import { mustGetEnv } from '../shared/env'
@@ -13,6 +14,7 @@ import { buildObjectKey } from '../shared/s3'
 import type {
   PresignedUploadRequestBody,
   PresignedUploadResponseBody,
+  StoredArtworkDocument,
 } from '../shared/types'
 import { validateRequiredString } from '../shared/validation'
 
@@ -31,7 +33,10 @@ export async function createPresignedUploadUrlHandler(
     const artworkId = validateRequiredString(body.artworkId, 'artworkId')
     const contentId = validateRequiredString(body.contentId, 'contentId')
 
-    await verifyAuthTokenFromHeader(request.header('authorization'), false)
+    const ownerUid = await verifyAuthTokenFromHeader(
+      request.header('authorization'),
+      true
+    )
 
     const bucketName = mustGetEnv('S3_BUCKET_NAME')
     const region = mustGetEnv('AWS_REGION')
@@ -52,6 +57,38 @@ export async function createPresignedUploadUrlHandler(
     })
 
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString()
+
+    const firestore = getFirestore()
+    const docRef = firestore.collection('protectedArtworks').doc(artworkId)
+    const now = new Date().toISOString()
+    const storedArtwork: StoredArtworkDocument = {
+      artworkId,
+      contentId,
+      ownerUid,
+      title: '',
+      imageName: fileName,
+      protection: {
+        status: 'upload_requested',
+        storage: {
+          provider: 's3',
+          bucketName,
+          objectKey,
+          region,
+        },
+        requestedAt: now,
+      },
+      storage: {
+        provider: 's3',
+        bucketName,
+        objectKey,
+        region,
+      },
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    await docRef.set(storedArtwork, { merge: true })
+
     const payload: PresignedUploadResponseBody = {
       uploadUrl,
       storage: {
