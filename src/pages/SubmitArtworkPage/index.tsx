@@ -5,25 +5,22 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
+import { auth } from '@/firebase/config'
 import {
-  createMockIpfsCid,
-  createMockStorageReference,
   generateImageHash,
-  registerArtworkProtectionMock,
+  requestPresignedUpload,
   saveProtectedArtwork,
+  uploadFileToPresignedUrl,
 } from '@/utils/protection'
 
 function SubmitArtworkPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  const [simulateFailure, setSimulateFailure] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -44,59 +41,54 @@ function SubmitArtworkPage() {
     setIsSubmitting(true)
 
     const artworkId = crypto.randomUUID()
-
+    const contentId = crypto.randomUUID()
     try {
-      const imageHash = await generateImageHash(file)
-      const storage = createMockStorageReference(artworkId, file.name)
-      const ipfsCid = createMockIpfsCid(imageHash)
+      const idToken = auth.currentUser
+        ? await auth.currentUser.getIdToken()
+        : undefined
 
-      const pendingRecord = {
+      const { storage, uploadUrl } = await requestPresignedUpload({
+        payload: {
+          fileName: file.name,
+          fileType: file.type || 'application/octet-stream',
+          artworkId,
+          contentId,
+        },
+        authToken: idToken,
+      })
+
+      await uploadFileToPresignedUrl({ uploadUrl, file })
+
+      const imageHash = await generateImageHash(file)
+      const mockIpfsCid = `bafy${imageHash.slice(0, 40)}`
+
+      const now = new Date().toISOString()
+      const txSuffix = imageHash.slice(0, 8)
+      const cidSuffix = mockIpfsCid.slice(0, 6)
+
+      const protectedRecord = {
         id: artworkId,
         title: title.trim(),
         imageName: file.name,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         protection: {
           imageHash,
           storage,
-          ipfsCid,
-          status: 'pending' as const,
+          ipfsCid: mockIpfsCid,
+          status: 'registered' as const,
+          blockchainTxHash: `0xmock${txSuffix}${cidSuffix}${Date.now().toString(16)}`,
+          chainName: 'polygon-amoy',
+          protectedAt: now,
         },
       }
 
-      saveProtectedArtwork(pendingRecord)
-
-      try {
-        const registered = await registerArtworkProtectionMock({
-          imageHash,
-          ipfsCid,
-          shouldFail: simulateFailure,
-        })
-
-        saveProtectedArtwork({
-          ...pendingRecord,
-          protection: {
-            ...pendingRecord.protection,
-            ...registered,
-          },
-        })
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Unknown protection registration error.'
-
-        saveProtectedArtwork({
-          ...pendingRecord,
-          protection: {
-            ...pendingRecord.protection,
-            status: 'failed',
-            chainName: 'polygon-amoy',
-            errorMessage: message,
-          },
-        })
-      }
+      saveProtectedArtwork(protectedRecord)
 
       navigate(`/artworks/${artworkId}`)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to submit artwork.'
+      setErrorMessage(message)
     } finally {
       setIsSubmitting(false)
     }
@@ -110,8 +102,8 @@ function SubmitArtworkPage() {
       <Stack spacing={3} sx={{ maxWidth: 680, mx: 'auto' }}>
         <Typography variant="h4">Submit Artwork</Typography>
         <Typography color="text.secondary">
-          MVP flow: generate image hash, attach S3/IPFS metadata, and run mock
-          blockchain registration.
+          Upload to S3 via presigned URL, generate image hash, and register
+          artwork protection.
         </Typography>
 
         <Box component="form" onSubmit={onSubmit}>
@@ -132,16 +124,6 @@ function SubmitArtworkPage() {
                 type="file"
               />
             </Button>
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={simulateFailure}
-                  onChange={(event) => setSimulateFailure(event.target.checked)}
-                />
-              }
-              label="Simulate blockchain registration failure"
-            />
 
             {errorMessage ? (
               <Alert severity="error">{errorMessage}</Alert>

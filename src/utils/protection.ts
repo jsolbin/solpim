@@ -1,6 +1,7 @@
 import type {
   BlockchainProtection,
-  S3ObjectReference,
+  PresignedUploadRequest,
+  PresignedUploadResponse,
 } from '@/types/blockchain'
 
 const STORAGE_KEY = 'solpim-protected-artworks'
@@ -17,6 +18,56 @@ interface StoredRecords {
   [id: string]: ProtectedArtworkRecord
 }
 
+export async function requestPresignedUpload(options: {
+  payload: PresignedUploadRequest
+  authToken?: string
+}): Promise<PresignedUploadResponse> {
+  const { payload, authToken } = options
+  const endpoint = import.meta.env.VITE_PRESIGNED_UPLOAD_ENDPOINT
+
+  if (!endpoint) {
+    throw new Error(
+      'Missing VITE_PRESIGNED_UPLOAD_ENDPOINT. Set your presigned upload API endpoint in environment variables.'
+    )
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(await buildHttpErrorMessage(response))
+  }
+
+  return (await response.json()) as PresignedUploadResponse
+}
+
+export async function uploadFileToPresignedUrl(options: {
+  uploadUrl: string
+  file: File
+}): Promise<void> {
+  const { uploadUrl, file } = options
+
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    const detail = errorText ? ` Response: ${errorText}` : ''
+    throw new Error(`S3 upload failed with status ${response.status}.${detail}`)
+  }
+}
+
 export async function generateImageHash(file: File): Promise<string> {
   const buffer = await file.arrayBuffer()
   const digest = await crypto.subtle.digest('SHA-256', buffer)
@@ -24,52 +75,6 @@ export async function generateImageHash(file: File): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('')
-}
-
-export function createMockStorageReference(
-  artworkId: string,
-  fileName: string
-): S3ObjectReference {
-  return {
-    provider: 's3',
-    bucketName: 'solpim-artworks-dev',
-    objectKey: `artworks/${artworkId}/${Date.now()}-${fileName}`,
-    region: 'ap-northeast-2',
-  }
-}
-
-export function createMockIpfsCid(imageHash: string): string {
-  return `bafy${imageHash.slice(0, 40)}`
-}
-
-export async function registerArtworkProtectionMock(options: {
-  imageHash: string
-  ipfsCid?: string
-  shouldFail?: boolean
-}): Promise<
-  Pick<
-    BlockchainProtection,
-    'status' | 'blockchainTxHash' | 'chainName' | 'protectedAt'
-  >
-> {
-  const { imageHash, ipfsCid, shouldFail = false } = options
-
-  await new Promise((resolve) => setTimeout(resolve, 700))
-
-  if (shouldFail) {
-    throw new Error('Mock blockchain registration failed.')
-  }
-
-  const now = new Date().toISOString()
-  const txSuffix = imageHash.slice(0, 8)
-  const cidSuffix = ipfsCid?.slice(0, 6) ?? 'nocid0'
-
-  return {
-    status: 'registered',
-    blockchainTxHash: `0xmock${txSuffix}${cidSuffix}${Date.now().toString(16)}`,
-    chainName: 'polygon-amoy',
-    protectedAt: now,
-  }
 }
 
 export function saveProtectedArtwork(record: ProtectedArtworkRecord): void {
@@ -97,4 +102,22 @@ function readStoredRecords(): StoredRecords {
   } catch {
     return {}
   }
+}
+
+async function buildHttpErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as {
+      message?: string
+      error?: string
+    }
+
+    const message = body.message || body.error
+    if (message) {
+      return message
+    }
+  } catch {
+    // Ignore body parsing errors and fallback to generic message
+  }
+
+  return `Request failed with status ${response.status}.`
 }
