@@ -1,20 +1,12 @@
 import type {
-  BlockchainProtection,
   FinalizeUploadRequest,
   FinalizeUploadResponse,
+  ProtectedArtworkRecord,
   PresignedUploadRequest,
   PresignedUploadResponse,
 } from '@/types/blockchain'
 
 const STORAGE_KEY = 'solpim-protected-artworks'
-
-export interface ProtectedArtworkRecord {
-  id: string
-  title: string
-  imageName: string
-  createdAt: string
-  protection: BlockchainProtection
-}
 
 interface StoredRecords {
   [id: string]: ProtectedArtworkRecord

@@ -6,7 +6,15 @@ export interface S3ObjectReference {
   provider: StorageProvider
   bucketName: string
   objectKey: string
-  region?: string
+  region: string
+}
+
+export interface ProtectedArtworkRecord {
+  id: string
+  title: string
+  imageName: string
+  createdAt: string
+  protection: BlockchainProtection
 }
 
 export interface BlockchainProtection {

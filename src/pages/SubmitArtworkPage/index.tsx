@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { auth } from '@/firebase/config'
+import type { ProtectedArtworkRecord } from '@/types/blockchain'
 import {
   generateImageHash,
   requestFinalizeUpload,
@@ -79,7 +80,7 @@ function SubmitArtworkPage() {
       const txSuffix = imageHash.slice(0, 8)
       const cidSuffix = mockIpfsCid.slice(0, 6)
 
-      const protectedRecord = {
+      const protectedRecord: ProtectedArtworkRecord = {
         id: artworkId,
         title: title.trim(),
         imageName: file.name,
