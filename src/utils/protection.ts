@@ -1,16 +1,9 @@
 import type {
   FinalizeUploadRequest,
   FinalizeUploadResponse,
-  ProtectedArtworkRecord,
   PresignedUploadRequest,
   PresignedUploadResponse,
 } from '@/types/blockchain'
-
-const STORAGE_KEY = 'solpim-protected-artworks'
-
-interface StoredRecords {
-  [id: string]: ProtectedArtworkRecord
-}
 
 export async function requestPresignedUpload(options: {
   payload: PresignedUploadRequest
@@ -96,11 +89,10 @@ export async function requestApproveArtworkRegistration(options: {
   authToken: string
 }): Promise<{
   artworkId: string
-  status: 'registered'
+  status: 'pinned'
   approvedBy: string
   imageHash: string
   ipfsCid: string
-  blockchainTxHash: string
 }> {
   const { artworkId, authToken } = options
   const endpoint = import.meta.env.VITE_APPROVE_ARTWORK_ENDPOINT
@@ -126,47 +118,10 @@ export async function requestApproveArtworkRegistration(options: {
 
   return (await response.json()) as {
     artworkId: string
-    status: 'registered'
+    status: 'pinned'
     approvedBy: string
     imageHash: string
     ipfsCid: string
-    blockchainTxHash: string
-  }
-}
-
-export async function generateImageHash(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer()
-  const digest = await crypto.subtle.digest('SHA-256', buffer)
-
-  return Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-export function saveProtectedArtwork(record: ProtectedArtworkRecord): void {
-  const records = readStoredRecords()
-  records[record.id] = record
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
-}
-
-export function getProtectedArtworkById(
-  id: string
-): ProtectedArtworkRecord | null {
-  const records = readStoredRecords()
-  return records[id] ?? null
-}
-
-function readStoredRecords(): StoredRecords {
-  const raw = localStorage.getItem(STORAGE_KEY)
-
-  if (!raw) {
-    return {}
-  }
-
-  try {
-    return JSON.parse(raw) as StoredRecords
-  } catch {
-    return {}
   }
 }
 
@@ -175,11 +130,12 @@ async function buildHttpErrorMessage(response: Response): Promise<string> {
     const body = (await response.json()) as {
       message?: string
       error?: string
+      code?: string | null
     }
 
     const message = body.message || body.error
     if (message) {
-      return message
+      return body.code ? `${message} (${body.code})` : message
     }
   } catch {
     // Ignore body parsing errors and fallback to generic message
