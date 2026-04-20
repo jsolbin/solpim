@@ -1,5 +1,7 @@
 import type {
   BlockchainProtection,
+  FinalizeUploadRequest,
+  FinalizeUploadResponse,
   PresignedUploadRequest,
   PresignedUploadResponse,
 } from '@/types/blockchain'
@@ -66,6 +68,35 @@ export async function uploadFileToPresignedUrl(options: {
     const detail = errorText ? ` Response: ${errorText}` : ''
     throw new Error(`S3 upload failed with status ${response.status}.${detail}`)
   }
+}
+
+export async function requestFinalizeUpload(options: {
+  payload: FinalizeUploadRequest
+  authToken: string
+}): Promise<FinalizeUploadResponse> {
+  const { payload, authToken } = options
+  const endpoint = import.meta.env.VITE_FINALIZE_UPLOAD_ENDPOINT
+
+  if (!endpoint) {
+    throw new Error(
+      'Missing VITE_FINALIZE_UPLOAD_ENDPOINT. Set your finalize upload API endpoint in environment variables.'
+    )
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(await buildHttpErrorMessage(response))
+  }
+
+  return (await response.json()) as FinalizeUploadResponse
 }
 
 export async function generateImageHash(file: File): Promise<string> {

@@ -32,3 +32,22 @@ export interface PresignedUploadResponse {
   storage: S3ObjectReference
   expiresAt: string
 }
+
+export interface FinalizeUploadRequest {
+  artworkId: string
+  contentId: string
+  title: string
+  imageName: string
+  storage: S3ObjectReference
+}
+
+export interface FinalizeUploadResponse {
+  artworkId: string
+  status: 'submitted'
+  verifiedStorage: {
+    objectKey: string
+    contentType: string
+    contentLength: number
+  }
+  submittedAt: string
+}

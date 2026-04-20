@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography'
 import { auth } from '@/firebase/config'
 import {
   generateImageHash,
+  requestFinalizeUpload,
   requestPresignedUpload,
   saveProtectedArtwork,
   uploadFileToPresignedUrl,
@@ -43,9 +44,10 @@ function SubmitArtworkPage() {
     const artworkId = crypto.randomUUID()
     const contentId = crypto.randomUUID()
     try {
-      const idToken = auth.currentUser
-        ? await auth.currentUser.getIdToken()
-        : undefined
+      const idToken = await auth.currentUser?.getIdToken()
+      if (!idToken) {
+        throw new Error('You must be signed in to submit artwork.')
+      }
 
       const { storage, uploadUrl } = await requestPresignedUpload({
         payload: {
@@ -58,6 +60,17 @@ function SubmitArtworkPage() {
       })
 
       await uploadFileToPresignedUrl({ uploadUrl, file })
+
+      await requestFinalizeUpload({
+        payload: {
+          artworkId,
+          contentId,
+          title: title.trim(),
+          imageName: file.name,
+          storage,
+        },
+        authToken: idToken,
+      })
 
       const imageHash = await generateImageHash(file)
       const mockIpfsCid = `bafy${imageHash.slice(0, 40)}`
