@@ -37,6 +37,31 @@ export interface FinalizeUploadResponseBody {
   submittedAt: string
 }
 
+export interface PinArtworkRequestBody {
+  artworkId?: string
+}
+
+export interface PinArtworkResponseBody {
+  artworkId: string
+  status: 'pinned' | 'chain_pending' | 'failed'
+  ipfsCid?: string
+  errorCode?: string
+  updatedAt: string
+}
+
+export interface PinataPinFileRequestOptions {
+  fileName?: string
+  groupId?: string
+  keyValues?: Record<string, string>
+}
+
+export interface PinataPinFileResponseBody {
+  IpfsHash: string
+  PinSize: number
+  Timestamp: string
+  isDuplicate?: boolean
+}
+
 export interface StoredArtworkDocument {
   artworkId: string
   contentId?: string
