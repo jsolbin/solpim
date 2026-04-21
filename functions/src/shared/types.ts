@@ -91,6 +91,7 @@ export interface StoredArtworkDocument {
     ipfsCid?: string
     blockchainTxHash?: string
     chainName?: string
+    errorCode?: string
     errorMessage?: string
     verifiedStorage?: {
       objectKey: string

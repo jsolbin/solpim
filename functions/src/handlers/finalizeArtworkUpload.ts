@@ -1,16 +1,23 @@
 import { S3Client } from '@aws-sdk/client-s3'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import * as logger from 'firebase-functions/logger'
+import { createHash } from 'node:crypto'
 
 import { verifyAuthTokenFromHeader } from '../shared/auth'
-import { mustGetEnv } from '../shared/env'
-import { HttpError } from '../shared/httpError'
+import { getPinataEnvConfig, mustGetEnv } from '../shared/env'
 import {
-  handleCommonHttpRequest,
-  handleHttpError,
   HttpRequest,
   HttpResponse,
+  handleCommonHttpRequest,
+  handleHttpError,
 } from '../shared/http'
-import { headUploadedObject, S3StorageReference } from '../shared/s3'
+import { HttpError } from '../shared/httpError'
+import { PinataApiError, pinFileToIpfs } from '../shared/pinning'
+import {
+  S3StorageReference,
+  getUploadedObjectBytes,
+  headUploadedObject,
+} from '../shared/s3'
 import type {
   FinalizeUploadRequestBody,
   FinalizeUploadResponseBody,
@@ -134,12 +141,115 @@ export async function finalizeArtworkUploadHandler(
     }
 
     response.status(200).json(result)
+
+    // Finalize should return quickly; the protection workflow continues async.
+    void runProtectionPipelineAsync({
+      artworkId,
+      storage,
+      imageName,
+    })
   } catch (error) {
     handleHttpError(response, error, 'Failed to finalize uploaded artwork')
   }
 }
 
-function validateStorage(value: FinalizeUploadRequestBody['storage']): S3StorageReference {
+interface ProtectionPipelineParams {
+  artworkId: string
+  storage: S3StorageReference
+  imageName: string
+}
+
+async function runProtectionPipelineAsync(
+  params: ProtectionPipelineParams
+): Promise<void> {
+  const firestore = getFirestore()
+  const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.artworkId)
+
+  try {
+    const snapshot = await docRef.get()
+    if (!snapshot.exists) {
+      logger.warn('Skip protection pipeline: artwork not found', {
+        artworkId: params.artworkId,
+      })
+      return
+    }
+
+    const artwork = snapshot.data() as StoredArtworkDocument
+    if (artwork.protection.status !== 'uploaded') {
+      logger.info('Skip protection pipeline: status is not uploaded', {
+        artworkId: params.artworkId,
+        status: artwork.protection.status,
+      })
+      return
+    }
+
+    const hashingAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: hashingAt,
+      'protection.status': 'hashing',
+      'protection.hashingAt': hashingAt,
+    })
+
+    const s3Client = new S3Client({ region: params.storage.region })
+    const objectBytes = await getUploadedObjectBytes(s3Client, params.storage)
+    const imageHash = createHash('sha256').update(objectBytes).digest('hex')
+
+    await docRef.update({
+      updatedAt: new Date().toISOString(),
+      'protection.imageHash': imageHash,
+    })
+
+    const pinataEnv = getPinataEnvConfig()
+    const pinResult = await pinFileToIpfs({
+      apiBaseUrl: pinataEnv.apiBaseUrl,
+      jwt: pinataEnv.jwt,
+      fileBytes: objectBytes,
+      fileName: params.imageName,
+      options: {
+        keyValues: {
+          artworkId: params.artworkId,
+          imageHash,
+        },
+      },
+    })
+
+    const pinnedAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: pinnedAt,
+      'protection.status': 'pinned',
+      'protection.pinnedAt': pinnedAt,
+      'protection.ipfsCid': pinResult.IpfsHash,
+      'protection.imageHash': imageHash,
+      'protection.errorCode': FieldValue.delete(),
+      'protection.errorMessage': FieldValue.delete(),
+      'protection.failedAt': FieldValue.delete(),
+    })
+  } catch (error) {
+    const failedAt = new Date().toISOString()
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error.'
+    const errorCode =
+      error instanceof PinataApiError ? error.code : 'PROTECTION_PIPELINE_ERROR'
+
+    await docRef.update({
+      updatedAt: failedAt,
+      'protection.status': 'failed',
+      'protection.failedAt': failedAt,
+      'protection.errorCode': errorCode,
+      'protection.errorMessage': errorMessage,
+    })
+
+    logger.error('Protection pipeline failed', {
+      artworkId: params.artworkId,
+      errorCode,
+      errorMessage,
+    })
+  }
+}
+
+function validateStorage(
+  value: FinalizeUploadRequestBody['storage']
+): S3StorageReference {
   if (!value || typeof value !== 'object') {
     throw new HttpError(400, 'storage is required.')
   }
