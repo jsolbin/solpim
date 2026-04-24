@@ -37,6 +37,7 @@ export interface BlockchainProtection {
   pinnedAt?: string
   chainPendingAt?: string
   registeredAt?: string
+  protectedAt?: string
   failedAt?: string
   approvedBy?: string
   imageHash?: string

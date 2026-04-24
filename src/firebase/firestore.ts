@@ -43,7 +43,7 @@ export async function listPendingProtectedArtworks(): Promise<
 > {
 	const pendingQuery = query(
 		collection(db, ARTWORKS_COLLECTION),
-		where('protection.status', '==', 'uploaded')
+		where('protection.status', '==', 'pinned')
 	)
 
 	const snapshots = await getDocs(pendingQuery)

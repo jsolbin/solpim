@@ -85,6 +85,7 @@ export interface StoredArtworkDocument {
     pinnedAt?: string
     chainPendingAt?: string
     registeredAt?: string
+    protectedAt?: string
     failedAt?: string
     approvedBy?: string
     imageHash?: string

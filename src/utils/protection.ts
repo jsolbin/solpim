@@ -89,10 +89,8 @@ export async function requestApproveArtworkRegistration(options: {
   authToken: string
 }): Promise<{
   artworkId: string
-  status: 'pinned'
+  status: 'chain_pending' | 'registered'
   approvedBy: string
-  imageHash: string
-  ipfsCid: string
 }> {
   const { artworkId, authToken } = options
   const endpoint = import.meta.env.VITE_APPROVE_ARTWORK_ENDPOINT
@@ -118,10 +116,8 @@ export async function requestApproveArtworkRegistration(options: {
 
   return (await response.json()) as {
     artworkId: string
-    status: 'pinned'
+    status: 'chain_pending' | 'registered'
     approvedBy: string
-    imageHash: string
-    ipfsCid: string
   }
 }
 

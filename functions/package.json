@@ -18,6 +18,7 @@
     "@aws-sdk/client-s3": "^3.876.0",
     "@aws-sdk/s3-request-presigner": "^3.876.0",
     "@pinata/sdk": "^2.1.0",
+    "ethers": "^6.16.0",
     "firebase-admin": "^13.6.0",
     "firebase-functions": "^7.0.0"
   },

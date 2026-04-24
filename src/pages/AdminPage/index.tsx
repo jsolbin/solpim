@@ -74,7 +74,9 @@ function AdminPage() {
       const idToken = await currentUser.getIdToken()
       await requestApproveArtworkRegistration({ artworkId, authToken: idToken })
 
-      setSuccessMessage(`Artwork ${artworkId} approved and registered.`)
+      setSuccessMessage(
+        `Artwork ${artworkId} approved. Chain registration is now running in background.`
+      )
       const artworks = await listPendingProtectedArtworks()
       setPendingArtworks(artworks)
     } catch (error) {

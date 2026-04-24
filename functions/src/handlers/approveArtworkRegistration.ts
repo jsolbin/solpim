@@ -1,10 +1,12 @@
-import { createHash } from 'node:crypto'
-
-import { S3Client } from '@aws-sdk/client-s3'
-import { getFirestore, type DocumentReference } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import * as logger from 'firebase-functions/logger'
 
 import { requireRoleFromHeader } from '../shared/auth'
-import { mustGetEnv } from '../shared/env'
+import {
+  BlockchainRegistrationError,
+  registerProtectionOnChain,
+} from '../shared/blockchain'
+import { getBlockchainEnvConfig } from '../shared/env'
 import { HttpError } from '../shared/httpError'
 import {
   handleCommonHttpRequest,
@@ -12,7 +14,6 @@ import {
   HttpRequest,
   HttpResponse,
 } from '../shared/http'
-import { getUploadedObjectBytes, headUploadedObject } from '../shared/s3'
 import type { StoredArtworkDocument } from '../shared/types'
 import { validateRequiredString } from '../shared/validation'
 
@@ -30,9 +31,6 @@ export async function approveArtworkRegistrationHandler(
     return
   }
 
-  let docRef: DocumentReference | null = null
-  let artwork: StoredArtworkDocument | null = null
-
   try {
     const body = request.body as ApproveArtworkRequestBody
     const artworkId = validateRequiredString(body.artworkId, 'artworkId')
@@ -42,137 +40,152 @@ export async function approveArtworkRegistrationHandler(
     )
 
     const firestore = getFirestore()
-    docRef = firestore.collection(ARTWORKS_COLLECTION).doc(artworkId)
+    const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(artworkId)
     const snapshot = await docRef.get()
 
     if (!snapshot.exists) {
       throw new HttpError(404, 'Artwork not found.')
     }
 
-    artwork = snapshot.data() as StoredArtworkDocument
-    if (artwork.protection.status !== 'uploaded') {
+    const artwork = snapshot.data() as StoredArtworkDocument
+    if (artwork.protection.status === 'registered') {
+      response.status(200).json({
+        artworkId,
+        status: 'registered',
+        approvedBy: artwork.protection.approvedBy ?? approvedBy,
+      })
+      return
+    }
+
+    if (artwork.protection.status === 'chain_pending') {
+      response.status(200).json({
+        artworkId,
+        status: 'chain_pending',
+        approvedBy: artwork.protection.approvedBy ?? approvedBy,
+      })
+      return
+    }
+
+    if (artwork.protection.status !== 'pinned') {
       throw new HttpError(
         409,
-        `Artwork must be uploaded before approval. Current status: ${artwork.protection.status}`
+        `Artwork must be pinned before chain registration. Current status: ${artwork.protection.status}`
       )
     }
-
-    const expectedBucketName = mustGetEnv('S3_BUCKET_NAME')
-    const expectedRegion = mustGetEnv('AWS_REGION')
-    if (artwork.storage.bucketName !== expectedBucketName) {
-      throw new HttpError(400, 'storage.bucketName does not match server.')
-    }
-
-    if (artwork.storage.region !== expectedRegion) {
-      throw new HttpError(400, 'storage.region does not match server.')
-    }
-
-    const s3Client = new S3Client({ region: expectedRegion })
-    const headResult = await headUploadedObject(s3Client, artwork.storage)
-    const objectBytes = await getUploadedObjectBytes(s3Client, artwork.storage)
-    const imageHash = createHash('sha256').update(objectBytes).digest('hex')
-    const ipfsCid = `bafy${imageHash.slice(0, 40)}`
-    const blockchainTxHash = `0x${imageHash.slice(0, 64)}`
-    const chainName = process.env.CHAIN_NAME ?? 'polygon-amoy'
     const now = new Date().toISOString()
 
     await docRef.update({
       updatedAt: now,
-      protection: {
-        ...artwork.protection,
-        status: 'hashing',
-        approvedAt: now,
-        approvedBy,
-        hashingAt: now,
-        imageHash,
-      },
-    })
-
-    await docRef.update({
-      updatedAt: now,
-      protection: {
-        ...artwork.protection,
-        status: 'pinned',
-        approvedAt: now,
-        approvedBy,
-        hashingAt: now,
-        pinnedAt: now,
-        imageHash,
-        ipfsCid,
-      },
-    })
-
-    await docRef.update({
-      updatedAt: now,
-      protection: {
-        ...artwork.protection,
-        status: 'chain_pending',
-        approvedAt: now,
-        approvedBy,
-        hashingAt: now,
-        pinnedAt: now,
-        chainPendingAt: now,
-        imageHash,
-        ipfsCid,
-      },
-    })
-
-    await docRef.update({
-      updatedAt: now,
-      protection: {
-        ...artwork.protection,
-        status: 'registered',
-        approvedAt: now,
-        approvedBy,
-        hashingAt: now,
-        pinnedAt: now,
-        chainPendingAt: now,
-        registeredAt: now,
-        imageHash,
-        ipfsCid,
-        blockchainTxHash,
-        chainName,
-        verifiedStorage: {
-          objectKey: artwork.storage.objectKey,
-          contentType: headResult.ContentType ?? 'application/octet-stream',
-          contentLength: headResult.ContentLength ?? 0,
-          eTag: headResult.ETag ?? null,
-        },
-      },
+      'protection.approvedAt': now,
+      'protection.approvedBy': approvedBy,
+      'protection.errorCode': FieldValue.delete(),
+      'protection.errorMessage': FieldValue.delete(),
+      'protection.failedAt': FieldValue.delete(),
     })
 
     response.status(200).json({
       artworkId,
-      status: 'registered',
+      status: 'chain_pending',
       approvedBy,
-      imageHash,
-      ipfsCid,
-      blockchainTxHash,
     })
-  } catch (error) {
-    if (
-      docRef &&
-      artwork &&
-      (!(
-        error instanceof HttpError &&
-        error.statusCode !== 404 &&
-        error.statusCode < 500
-      ))
-    ) {
-      const failedAt = new Date().toISOString()
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error.'
 
-      await docRef.update({
-        updatedAt: failedAt,
-        protection: {
-          ...artwork.protection,
-          status: 'failed',
-          failedAt,
-          errorMessage,
-        },
+    // Chain registration can be slow and retried; process it asynchronously.
+    void runChainRegistrationWorkerAsync({ artworkId })
+  } catch (error) {
+    handleHttpError(response, error, 'Failed to approve artwork registration')
+  }
+}
+
+interface ChainRegistrationWorkerParams {
+  artworkId: string
+}
+
+async function runChainRegistrationWorkerAsync(
+  params: ChainRegistrationWorkerParams
+): Promise<void> {
+  const firestore = getFirestore()
+  const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.artworkId)
+
+  try {
+    const snapshot = await docRef.get()
+    if (!snapshot.exists) {
+      logger.warn('Skip chain registration: artwork not found', {
+        artworkId: params.artworkId,
       })
+      return
     }
 
-    handleHttpError(response, error, 'Failed to approve artwork registration')
+    const artwork = snapshot.data() as StoredArtworkDocument
+    if (artwork.protection.status === 'registered') {
+      logger.info('Skip chain registration: already registered', {
+        artworkId: params.artworkId,
+      })
+      return
+    }
+
+    if (artwork.protection.status !== 'pinned') {
+      logger.info('Skip chain registration: status is not pinned', {
+        artworkId: params.artworkId,
+        status: artwork.protection.status,
+      })
+      return
+    }
+
+    if (!artwork.protection.imageHash) {
+      throw new HttpError(409, 'imageHash is missing; pinning step is incomplete.')
+    }
+
+    const chainPendingAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: chainPendingAt,
+      'protection.status': 'chain_pending',
+      'protection.chainPendingAt': chainPendingAt,
+      'protection.errorCode': FieldValue.delete(),
+      'protection.errorMessage': FieldValue.delete(),
+      'protection.failedAt': FieldValue.delete(),
+    })
+
+    const ipfsCid = artwork.protection.ipfsCid
+    if (!ipfsCid) {
+      throw new HttpError(409, 'ipfsCid is missing; pinning step is incomplete.')
+    }
+
+    const chainResult = await registerProtectionOnChain({
+      artworkId: params.artworkId,
+      imageHash: artwork.protection.imageHash,
+      ipfsCid,
+      env: getBlockchainEnvConfig(),
+    })
+
+    const registeredAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: registeredAt,
+      'protection.status': 'registered',
+      'protection.registeredAt': registeredAt,
+      'protection.protectedAt': chainResult.protectedAt,
+      'protection.blockchainTxHash': chainResult.txHash,
+      'protection.chainName': chainResult.chainName,
+    })
+  } catch (error) {
+    const failedAt = new Date().toISOString()
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error.'
+    const errorCode =
+      error instanceof BlockchainRegistrationError
+        ? error.code
+        : 'CHAIN_REGISTRATION_ERROR'
+
+    await docRef.update({
+      updatedAt: failedAt,
+      'protection.status': 'failed',
+      'protection.failedAt': failedAt,
+      'protection.errorCode': errorCode,
+      'protection.errorMessage': errorMessage,
+    })
+
+    logger.error('Chain registration worker failed', {
+      artworkId: params.artworkId,
+      errorCode,
+      errorMessage,
+    })
   }
 }
