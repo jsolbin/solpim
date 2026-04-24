@@ -7,13 +7,13 @@ import {
   registerProtectionOnChain,
 } from '../shared/blockchain'
 import { getBlockchainEnvConfig } from '../shared/env'
-import { HttpError } from '../shared/httpError'
 import {
-  handleCommonHttpRequest,
-  handleHttpError,
   HttpRequest,
   HttpResponse,
+  handleCommonHttpRequest,
+  handleHttpError,
 } from '../shared/http'
+import { HttpError } from '../shared/httpError'
 import type { StoredArtworkDocument } from '../shared/types'
 import { validateRequiredString } from '../shared/validation'
 
@@ -132,7 +132,10 @@ async function runChainRegistrationWorkerAsync(
     }
 
     if (!artwork.protection.imageHash) {
-      throw new HttpError(409, 'imageHash is missing; pinning step is incomplete.')
+      throw new HttpError(
+        409,
+        'imageHash is missing; pinning step is incomplete.'
+      )
     }
 
     const chainPendingAt = new Date().toISOString()
@@ -147,7 +150,10 @@ async function runChainRegistrationWorkerAsync(
 
     const ipfsCid = artwork.protection.ipfsCid
     if (!ipfsCid) {
-      throw new HttpError(409, 'ipfsCid is missing; pinning step is incomplete.')
+      throw new HttpError(
+        409,
+        'ipfsCid is missing; pinning step is incomplete.'
+      )
     }
 
     const chainResult = await registerProtectionOnChain({
@@ -168,7 +174,8 @@ async function runChainRegistrationWorkerAsync(
     })
   } catch (error) {
     const failedAt = new Date().toISOString()
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error.'
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error.'
     const errorCode =
       error instanceof BlockchainRegistrationError
         ? error.code

@@ -1,4 +1,4 @@
-import { hexlify, JsonRpcProvider, toUtf8Bytes, Wallet } from 'ethers'
+import { JsonRpcProvider, Wallet, hexlify, toUtf8Bytes } from 'ethers'
 
 import { BlockchainEnvConfig } from './env'
 
@@ -79,7 +79,9 @@ function buildRegistrationPayloadData(payload: {
   return hexlify(toUtf8Bytes(message))
 }
 
-function toBlockchainRegistrationError(error: unknown): BlockchainRegistrationError {
+function toBlockchainRegistrationError(
+  error: unknown
+): BlockchainRegistrationError {
   if (error instanceof BlockchainRegistrationError) {
     return error
   }
