@@ -11,10 +11,12 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 
 import { auth, db } from '@/firebase/config'
-import { listPendingProtectedArtworks } from '@/firebase/firestore'
 import { contentContainerSx, contentPageSx } from '@/styles/page'
 import type { ProtectedArtworkRecord } from '@/types/blockchain'
-import { requestApproveArtworkRegistration } from '@/utils/protection'
+import {
+  requestApproveArtworkRegistration,
+  requestPendingProtectedArtworks,
+} from '@/utils/protection'
 
 function AdminPage() {
   const navigate = useNavigate()
@@ -32,7 +34,7 @@ function AdminPage() {
       setIsLoading(true)
 
       try {
-        const artworks = await listPendingProtectedArtworks()
+        const artworks = await requestPendingProtectedArtworks()
         setPendingArtworks(artworks)
       } catch (error) {
         setErrorMessage(
@@ -77,7 +79,7 @@ function AdminPage() {
       setSuccessMessage(
         `Artwork ${artworkId} approved. Chain registration is now running in background.`
       )
-      const artworks = await listPendingProtectedArtworks()
+      const artworks = await requestPendingProtectedArtworks()
       setPendingArtworks(artworks)
     } catch (error) {
       setErrorMessage(

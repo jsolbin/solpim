@@ -10,11 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import { auth } from '@/firebase/config'
-import {
-  requestFinalizeUpload,
-  requestPresignedUpload,
-  uploadFileToPresignedUrl,
-} from '@/utils/protection'
+import { requestFinalizeUpload, uploadFileDirectly } from '@/utils/protection'
 
 function SubmitArtworkPage() {
   const navigate = useNavigate()
@@ -47,17 +43,12 @@ function SubmitArtworkPage() {
         throw new Error('You must be signed in to submit artwork.')
       }
 
-      const { storage, uploadUrl } = await requestPresignedUpload({
-        payload: {
-          fileName: file.name,
-          fileType: file.type || 'application/octet-stream',
-          artworkId,
-          contentId,
-        },
+      const { storage } = await uploadFileDirectly({
+        file,
+        artworkId,
+        contentId,
         authToken: idToken,
       })
-
-      await uploadFileToPresignedUrl({ uploadUrl, file })
 
       await requestFinalizeUpload({
         payload: {
@@ -88,8 +79,8 @@ function SubmitArtworkPage() {
       <Stack spacing={3} sx={{ maxWidth: 680, mx: 'auto' }}>
         <Typography variant="h4">Submit Artwork</Typography>
         <Typography color="text.secondary">
-          Upload to S3 via presigned URL, generate image hash, and register
-          artwork protection.
+          Upload file to backend, generate image hash, and register artwork
+          protection.
         </Typography>
 
         <Box component="form" onSubmit={onSubmit}>

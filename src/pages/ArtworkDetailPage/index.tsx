@@ -8,9 +8,9 @@ import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
-import type { ProtectedArtworkRecord } from '@/types/blockchain'
-import { getProtectedArtworkById } from '@/firebase/firestore'
 import { contentContainerSx, contentPageSx } from '@/styles/page'
+import type { ProtectedArtworkRecord } from '@/types/blockchain'
+import { requestProtectedArtworkStatus } from '@/utils/protection'
 
 const statusChipColor = {
   upload_requested: 'info',
@@ -32,7 +32,7 @@ function ArtworkDetailPage() {
 
     const loadArtwork = async () => {
       setIsLoading(true)
-      const nextArtwork = await getProtectedArtworkById(id)
+      const nextArtwork = await requestProtectedArtworkStatus({ artworkId: id })
 
       if (isMounted) {
         setArtwork(nextArtwork)
@@ -139,9 +139,7 @@ function ArtworkDetailPage() {
           <Typography sx={{ wordBreak: 'break-all' }}>
             Object key: {protection.storage.objectKey}
           </Typography>
-          <Typography>
-            Region: {protection.storage.region}
-          </Typography>
+          <Typography>Region: {protection.storage.region}</Typography>
           <Typography>
             Verified content length:{' '}
             {protection.verifiedStorage?.contentLength ?? 'Not verified yet'}
