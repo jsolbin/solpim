@@ -97,7 +97,7 @@ function ArtworkDetailPage() {
         <Stack spacing={1.5}>
           <Typography variant="h6">Protection Status</Typography>
           <Chip
-            color={statusChipColor[protection.status]}
+            color={statusChipColor[protection.status] as any}
             label={protection.status.toUpperCase()}
             sx={{ width: 'fit-content' }}
           />

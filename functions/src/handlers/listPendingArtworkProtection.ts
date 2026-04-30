@@ -22,7 +22,7 @@ export async function listPendingArtworkProtectionHandler(
     const firestore = getFirestore()
     const snapshots = await firestore
       .collection(ARTWORKS_COLLECTION)
-      .where('protection.status', '==', 'pinned')
+      .where('protection.status', '==', 'uploaded')
       .get()
 
     const items = snapshots.docs.map((doc) => {
