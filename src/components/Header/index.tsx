@@ -10,6 +10,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
 
 import { DEFAULT_PROFILE_IMAGE_URL } from '@/constants/profileIcons'
 import {
@@ -17,7 +18,7 @@ import {
   AUTH_SESSION_UPDATED_EVENT,
   logout,
 } from '@/firebase/auth'
-import { auth } from '@/firebase/config'
+import { auth, db } from '@/firebase/config'
 
 const headerActionSx = {
   minHeight: 42,
@@ -39,6 +40,7 @@ function Header() {
   )
   const [profileMenuAnchor, setProfileMenuAnchor] =
     useState<HTMLElement | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   const goToGallery = () => navigate('/gallery')
   const goToLogin = () => navigate('/login')
@@ -46,10 +48,22 @@ function Header() {
   const isProfileMenuOpen = Boolean(profileMenuAnchor)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoggedIn(Boolean(user))
       setUsername(user?.displayName || user?.email || 'User')
       setProfileImageUrl(user?.photoURL || DEFAULT_PROFILE_IMAGE_URL)
+
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid))
+          setUserRole(userDoc.data()?.role ?? null)
+        } catch (error) {
+          console.error('Failed to fetch user role:', error)
+          setUserRole(null)
+        }
+      } else {
+        setUserRole(null)
+      }
     })
 
     return unsubscribe
@@ -210,6 +224,17 @@ function Header() {
                   >
                     Edit profile
                   </MenuItem>
+                  {userRole === 'student' ? (
+                    <MenuItem
+                      onClick={() => {
+                        closeProfileMenu()
+                        navigate('/artwork-management')
+                      }}
+                      sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
+                    >
+                      My artwork management
+                    </MenuItem>
+                  ) : null}
                   <MenuItem
                     onClick={handleLogout}
                     sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
@@ -234,21 +259,23 @@ function Header() {
               </ButtonBase>
             )}
 
-            <ButtonBase
-              onClick={goToSubmit}
-              sx={{
-                ...headerActionSx,
-                borderColor: 'primary.main',
-                backgroundColor: 'primary.main',
-                color: 'common.white',
-                '&:hover': {
-                  backgroundColor: 'primary.dark',
-                  borderColor: 'primary.dark',
-                },
-              }}
-            >
-              Submit work
-            </ButtonBase>
+            {isLoggedIn && userRole === 'student' ? (
+              <ButtonBase
+                onClick={goToSubmit}
+                sx={{
+                  ...headerActionSx,
+                  borderColor: 'primary.main',
+                  backgroundColor: 'primary.main',
+                  color: 'common.white',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                    borderColor: 'primary.dark',
+                  },
+                }}
+              >
+                Submit work
+              </ButtonBase>
+            ) : null}
           </Stack>
         </Stack>
       </Box>

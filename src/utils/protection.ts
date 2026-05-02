@@ -1,6 +1,7 @@
 import type {
   FinalizeUploadRequest,
   FinalizeUploadResponse,
+  PendingArtworkGroup,
   PresignedUploadRequest,
   PresignedUploadResponse,
   ProtectedArtworkRecord,
@@ -134,7 +135,8 @@ export async function requestFinalizeUpload(options: {
 }
 
 export async function requestApproveArtworkRegistration(options: {
-  artworkId: string
+  artworkId?: string
+  contentId?: string
   authToken: string
 }): Promise<{
   artworkId: string
@@ -148,6 +150,10 @@ export async function requestApproveArtworkRegistration(options: {
     throw new Error(
       'Missing VITE_APPROVE_ARTWORK_ENDPOINT. Set your admin approval API endpoint in environment variables.'
     )
+  }
+
+  if (!artworkId) {
+    throw new Error('artworkId is required for approval.')
   }
 
   const response = await fetch(endpoint, {
@@ -201,7 +207,7 @@ export async function requestProtectedArtworkStatus(options: {
 }
 
 export async function requestPendingProtectedArtworks(): Promise<
-  ProtectedArtworkRecord[]
+  PendingArtworkGroup[]
 > {
   const endpoint = import.meta.env.VITE_PENDING_ARTWORKS_ENDPOINT
 
@@ -224,7 +230,7 @@ export async function requestPendingProtectedArtworks(): Promise<
   }
 
   const payload = (await response.json()) as {
-    items?: ProtectedArtworkRecord[]
+    items?: PendingArtworkGroup[]
   }
 
   return payload.items ?? []
