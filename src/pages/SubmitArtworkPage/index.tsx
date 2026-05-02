@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -18,7 +18,8 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { doc, setDoc } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 import { auth, db } from '@/firebase/config'
 import { requestFinalizeUpload, uploadFileDirectly } from '@/utils/protection'
@@ -39,6 +40,30 @@ function SubmitArtworkPage() {
   const [thumbnailIndex, setThumbnailIndex] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Check if user is a student
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        navigate('/login')
+        return
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid))
+        const role = userDoc.data()?.role
+
+        if (role !== 'student') {
+          navigate('/login')
+        }
+      } catch (error) {
+        console.error('Failed to check user role:', error)
+        navigate('/login')
+      }
+    })
+
+    return unsubscribe
+  }, [navigate])
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files ? Array.from(event.target.files) : []

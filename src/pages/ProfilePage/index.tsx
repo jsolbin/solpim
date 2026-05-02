@@ -168,14 +168,16 @@ export default function ProfilePage() {
             {isSubmitting ? 'Saving...' : 'Save changes'}
           </Button>
 
-          <Button
-            fullWidth
-            onClick={() => navigate('/artwork-management')}
-            type="button"
-            variant="white"
-          >
-            My artwork management
-          </Button>
+          {profileRole === 'student' ? (
+            <Button
+              fullWidth
+              onClick={() => navigate('/artwork-management')}
+              type="button"
+              variant="white"
+            >
+              My artwork management
+            </Button>
+          ) : null}
         </Stack>
       </Stack>
     </Box>
