@@ -16,6 +16,7 @@ const statusChipColor = {
   upload_requested: 'info',
   uploaded: 'warning',
   hashing: 'warning',
+  hashed: 'info',
   pinned: 'info',
   chain_pending: 'warning',
   registered: 'success',
@@ -97,7 +98,7 @@ function ArtworkDetailPage() {
         <Stack spacing={1.5}>
           <Typography variant="h6">Protection Status</Typography>
           <Chip
-            color={statusChipColor[protection.status] as any}
+            color={statusChipColor[protection.status]}
             label={protection.status.toUpperCase()}
             sx={{ width: 'fit-content' }}
           />

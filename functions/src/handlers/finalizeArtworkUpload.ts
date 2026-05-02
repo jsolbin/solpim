@@ -1,5 +1,7 @@
 import { S3Client } from '@aws-sdk/client-s3'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import * as logger from 'firebase-functions/logger'
+import { createHash } from 'node:crypto'
 
 import { verifyAuthTokenFromHeader } from '../shared/auth'
 import { mustGetEnv } from '../shared/env'
@@ -12,6 +14,7 @@ import {
 import { HttpError } from '../shared/httpError'
 import {
   S3StorageReference,
+  getUploadedObjectBytes,
   headUploadedObject,
 } from '../shared/s3'
 import type {
@@ -137,8 +140,90 @@ export async function finalizeArtworkUploadHandler(
     }
 
     response.status(200).json(result)
+
+    void runHashingPipelineAsync({
+      artworkId,
+      storage,
+    })
   } catch (error) {
     handleHttpError(response, error, 'Failed to finalize uploaded artwork')
+  }
+}
+
+interface HashingPipelineParams {
+  artworkId: string
+  storage: S3StorageReference
+}
+
+async function runHashingPipelineAsync(
+  params: HashingPipelineParams
+): Promise<void> {
+  const firestore = getFirestore()
+  const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.artworkId)
+
+  try {
+    const snapshot = await docRef.get()
+    if (!snapshot.exists) {
+      logger.warn('Skip hashing pipeline: artwork not found', {
+        artworkId: params.artworkId,
+      })
+      return
+    }
+
+    const artwork = snapshot.data() as StoredArtworkDocument
+    if (artwork.protection.status === 'hashed') {
+      logger.info('Skip hashing pipeline: already hashed', {
+        artworkId: params.artworkId,
+      })
+      return
+    }
+
+    if (artwork.protection.status !== 'uploaded') {
+      logger.info('Skip hashing pipeline: status is not uploaded', {
+        artworkId: params.artworkId,
+        status: artwork.protection.status,
+      })
+      return
+    }
+
+    const hashingAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: hashingAt,
+      'protection.status': 'hashing',
+      'protection.hashingAt': hashingAt,
+      'protection.errorCode': FieldValue.delete(),
+      'protection.errorMessage': FieldValue.delete(),
+      'protection.failedAt': FieldValue.delete(),
+    })
+
+    const s3Client = new S3Client({ region: params.storage.region })
+    const objectBytes = await getUploadedObjectBytes(s3Client, params.storage)
+    const imageHash = createHash('sha256').update(objectBytes).digest('hex')
+
+    const hashedAt = new Date().toISOString()
+    await docRef.update({
+      updatedAt: hashedAt,
+      'protection.status': 'hashed',
+      'protection.hashedAt': hashedAt,
+      'protection.imageHash': imageHash,
+    })
+  } catch (error) {
+    const failedAt = new Date().toISOString()
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error.'
+
+    await docRef.update({
+      updatedAt: failedAt,
+      'protection.status': 'failed',
+      'protection.failedAt': failedAt,
+      'protection.errorCode': 'HASHING_ERROR',
+      'protection.errorMessage': errorMessage,
+    })
+
+    logger.error('Hashing pipeline failed', {
+      artworkId: params.artworkId,
+      errorMessage,
+    })
   }
 }
 

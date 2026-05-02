@@ -2,6 +2,7 @@ export type BlockchainProtectionStatus =
   | 'upload_requested'
   | 'uploaded'
   | 'hashing'
+  | 'hashed'
   | 'pinned'
   | 'chain_pending'
   | 'registered'
@@ -34,6 +35,7 @@ export interface BlockchainProtection {
   uploadedAt?: string
   approvedAt?: string
   hashingAt?: string
+  hashedAt?: string
   pinnedAt?: string
   chainPendingAt?: string
   registeredAt?: string

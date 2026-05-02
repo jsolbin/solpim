@@ -1,7 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
-import { createHash } from 'node:crypto'
 
 import { requireRoleFromHeader } from '../shared/auth'
 import {
@@ -17,9 +16,7 @@ import {
 } from '../shared/http'
 import { HttpError } from '../shared/httpError'
 import { PinataApiError, pinFileToIpfs } from '../shared/pinning'
-import {
-  getUploadedObjectBytes,
-} from '../shared/s3'
+import { getUploadedObjectBytes } from '../shared/s3'
 import type { StoredArtworkDocument } from '../shared/types'
 import { validateRequiredString } from '../shared/validation'
 
@@ -63,10 +60,19 @@ export async function approveArtworkRegistrationHandler(
       return
     }
 
-    if (artwork.protection.status !== 'uploaded') {
+    if (artwork.protection.status === 'chain_pending') {
+      response.status(200).json({
+        artworkId,
+        status: 'chain_pending',
+        approvedBy: artwork.protection.approvedBy ?? approvedBy,
+      })
+      return
+    }
+
+    if (artwork.protection.status !== 'hashed') {
       throw new HttpError(
         409,
-        `Artwork must be in uploaded status before approval. Current status: ${artwork.protection.status}`
+        `Artwork must be hashed before approval. Current status: ${artwork.protection.status}`
       )
     }
 
@@ -83,23 +89,23 @@ export async function approveArtworkRegistrationHandler(
 
     response.status(200).json({
       artworkId,
-      status: 'registered',
+      status: 'chain_pending',
       approvedBy,
     })
 
-    // Complete registration (hashing, IPFS pinning, and blockchain registration) asynchronously
-    void runCompleteArtworkRegistrationAsync({ artworkId })
+    // After approval, pin to IPFS and register on-chain asynchronously.
+    void runPinAndRegisterArtworkAsync({ artworkId })
   } catch (error) {
     handleHttpError(response, error, 'Failed to approve artwork registration')
   }
 }
 
-interface CompleteArtworkRegistrationParams {
+interface PinAndRegisterArtworkParams {
   artworkId: string
 }
 
-async function runCompleteArtworkRegistrationAsync(
-  params: CompleteArtworkRegistrationParams
+async function runPinAndRegisterArtworkAsync(
+  params: PinAndRegisterArtworkParams
 ): Promise<void> {
   const firestore = getFirestore()
   const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.artworkId)
@@ -121,29 +127,41 @@ async function runCompleteArtworkRegistrationAsync(
       return
     }
 
-    if (artwork.protection.status !== 'uploaded') {
-      logger.info('Skip registration: status is not uploaded', {
+    if (
+      artwork.protection.status !== 'hashed' &&
+      artwork.protection.status !== 'chain_pending'
+    ) {
+      logger.info('Skip registration: status is not ready for approval', {
         artworkId: params.artworkId,
         status: artwork.protection.status,
       })
       return
     }
 
-    // Step 1: Hash the file
-    const hashingAt = new Date().toISOString()
+    if (!artwork.protection.imageHash) {
+      throw new HttpError(
+        409,
+        'imageHash is missing; hashing step is incomplete.'
+      )
+    }
+
+    const chainPendingAt = new Date().toISOString()
     await docRef.update({
-      updatedAt: hashingAt,
-      'protection.hashingAt': hashingAt,
+      updatedAt: chainPendingAt,
+      'protection.status': 'chain_pending',
+      'protection.chainPendingAt': chainPendingAt,
+      'protection.errorCode': FieldValue.delete(),
+      'protection.errorMessage': FieldValue.delete(),
+      'protection.failedAt': FieldValue.delete(),
     })
 
+    // Step 1 after approval: Pin to IPFS
     const s3Client = new S3Client({ region: artwork.protection.storage.region })
     const objectBytes = await getUploadedObjectBytes(
       s3Client,
       artwork.protection.storage
     )
-    const imageHash = createHash('sha256').update(objectBytes).digest('hex')
 
-    // Step 2: Pin to IPFS
     const pinataEnv = getPinataEnvConfig()
     const pinResult = await pinFileToIpfs({
       apiBaseUrl: pinataEnv.apiBaseUrl,
@@ -153,28 +171,28 @@ async function runCompleteArtworkRegistrationAsync(
       options: {
         keyValues: {
           artworkId: params.artworkId,
-          imageHash,
+          imageHash: artwork.protection.imageHash,
         },
       },
     })
 
     const ipfsCid = pinResult.IpfsHash
 
-    // Step 3: Register on blockchain
+    // Step 2 after approval: Register on blockchain
     const chainResult = await registerProtectionOnChain({
       artworkId: params.artworkId,
-      imageHash,
+      imageHash: artwork.protection.imageHash,
       ipfsCid,
       env: getBlockchainEnvConfig(),
     })
 
-    // Step 4: Update Firestore with all results
+    // Step 3 after approval: Update Firestore with all results
     const registeredAt = new Date().toISOString()
     await docRef.update({
       updatedAt: registeredAt,
       'protection.status': 'registered',
       'protection.registeredAt': registeredAt,
-      'protection.imageHash': imageHash,
+      'protection.imageHash': artwork.protection.imageHash,
       'protection.ipfsCid': ipfsCid,
       'protection.protectedAt': chainResult.protectedAt,
       'protection.blockchainTxHash': chainResult.txHash,
@@ -183,7 +201,7 @@ async function runCompleteArtworkRegistrationAsync(
 
     logger.info('Artwork registration completed successfully', {
       artworkId: params.artworkId,
-      imageHash,
+      imageHash: artwork.protection.imageHash,
       ipfsCid,
       txHash: chainResult.txHash,
     })
