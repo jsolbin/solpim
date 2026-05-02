@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve:clean": "npm --prefix functions run serve:clean"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
