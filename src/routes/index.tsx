@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 
 import Layout from '@/layouts'
 import AdminPage from '@/pages/AdminPage'
+import ArtistProfilePage from '@/pages/ArtistProfilePage'
 import ArtworkDetailPage from '@/pages/ArtworkDetailPage'
 import ArtworkManagementPage from '@/pages/ArtworkManagementPage'
 import GalleryPage from '@/pages/GalleryPage'
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'gallery', element: <GalleryPage /> },
       { path: 'artworks/:id', element: <ArtworkDetailPage /> },
+      { path: 'artists/:id', element: <ArtistProfilePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'submit', element: <SubmitArtworkPage /> },
