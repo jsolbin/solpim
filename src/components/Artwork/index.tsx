@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
@@ -45,36 +47,46 @@ const overlaySx = {
 
 function ArtworkCard({ artwork }: ArtworkProps) {
   return (
-    <Box sx={cardSx}>
-      <Box sx={{ overflow: 'hidden' }}>
-        <Box
-          component="img"
-          src={artwork.thumbnailUrl}
-          alt={artwork.thumbnailAlt}
-          sx={imageSx}
-        />
-      </Box>
+    <Link
+      to={`/artworks/${artwork.id}`}
+      state={{ artwork }}
+      style={{ textDecoration: 'none', color: 'inherit' }}
+    >
+      <Box sx={cardSx}>
+        <Box sx={{ overflow: 'hidden' }}>
+          <Box
+            component="img"
+            src={artwork.thumbnailUrl}
+            alt={artwork.thumbnailAlt}
+            sx={imageSx}
+            onError={(e) => {
+              const img = e.target as HTMLImageElement
+              img.src = '/primary_default.png'
+            }}
+          />
+        </Box>
 
-      <Box className="artwork-overlay" sx={overlaySx}>
-        <Typography
-          sx={{
-            fontSize: '1.125rem',
-            fontWeight: 600,
-            lineHeight: 1.2,
-          }}
-        >
-          {artwork.title}
-        </Typography>
-        <Typography
-          sx={{
-            fontSize: '0.95rem',
-            opacity: 0.92,
-          }}
-        >
-          {artwork.artist.name}
-        </Typography>
+        <Box className="artwork-overlay" sx={overlaySx}>
+          <Typography
+            sx={{
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              lineHeight: 1.2,
+            }}
+          >
+            {artwork.title}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '0.95rem',
+              opacity: 0.92,
+            }}
+          >
+            {artwork.artist.name}
+          </Typography>
+        </Box>
       </Box>
-    </Box>
+    </Link>
   )
 }
 

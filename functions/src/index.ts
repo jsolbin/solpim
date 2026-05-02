@@ -3,6 +3,7 @@ import { setGlobalOptions } from 'firebase-functions/v2'
 import { onRequest } from 'firebase-functions/v2/https'
 
 import { approveArtworkRegistrationHandler } from './handlers/approveArtworkRegistration'
+import { createPresignedDownloadUrlHandler } from './handlers/createPresignedDownloadUrl'
 import { createPresignedUploadUrlHandler } from './handlers/createPresignedUploadUrl'
 import { finalizeArtworkUploadHandler } from './handlers/finalizeArtworkUpload'
 import { getArtworkProtectionStatusHandler } from './handlers/getArtworkProtectionStatus'
@@ -40,4 +41,9 @@ export const listPendingArtworkProtection = onRequest(
 export const uploadFile = onRequest(
   { region: 'europe-west1', cors: true, maxInstances: 1, invoker: 'public' },
   uploadFileHandler
+)
+
+export const createPresignedDownloadUrl = onRequest(
+  { region: 'europe-west1', cors: true, maxInstances: 1, invoker: 'public' },
+  createPresignedDownloadUrlHandler
 )
