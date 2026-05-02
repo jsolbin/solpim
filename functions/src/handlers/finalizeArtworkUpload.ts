@@ -65,32 +65,14 @@ export async function finalizeArtworkUploadHandler(
     const submittedAt = new Date().toISOString()
 
     const firestore = getFirestore()
-    const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(artworkId)
-
-    let effectiveSubmittedAt = submittedAt
-    let effectiveCreatedAt = submittedAt
+    const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(contentId)
 
     await firestore.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(docRef)
 
       if (snapshot.exists) {
-        const existing = snapshot.data() as Partial<StoredArtworkDocument>
-        if (existing.contentId && existing.contentId !== contentId) {
-          throw new HttpError(
-            409,
-            'Different contentId already exists for this artworkId.'
-          )
-        }
-
-        if (existing.ownerUid && existing.ownerUid !== ownerUid) {
-          throw new HttpError(403, 'Artwork owner mismatch.')
-        }
-
-        effectiveSubmittedAt =
-          typeof existing.submittedAt === 'string'
-            ? existing.submittedAt
-            : submittedAt
-        effectiveCreatedAt = existing.createdAt ?? submittedAt
+        logger.info('Content already finalized', { contentId, artworkId })
+        return
       }
 
       const payload: StoredArtworkDocument = {
@@ -103,9 +85,7 @@ export async function finalizeArtworkUploadHandler(
         protection: {
           status: 'uploaded',
           storage,
-          requestedAt:
-            (snapshot.data() as Partial<StoredArtworkDocument> | undefined)
-              ?.protection?.requestedAt ?? submittedAt,
+          requestedAt: submittedAt,
           uploadedAt: submittedAt,
           verifiedStorage: {
             objectKey: storage.objectKey,
@@ -120,12 +100,12 @@ export async function finalizeArtworkUploadHandler(
           contentLength,
           eTag: headResult.ETag ?? null,
         },
-        submittedAt: effectiveSubmittedAt,
-        createdAt: effectiveCreatedAt,
+        submittedAt,
+        createdAt: submittedAt,
         updatedAt: submittedAt,
       }
 
-      transaction.set(docRef, payload, { merge: true })
+      transaction.set(docRef, payload)
     })
 
     const result: FinalizeUploadResponseBody = {
@@ -136,13 +116,13 @@ export async function finalizeArtworkUploadHandler(
         contentType,
         contentLength,
       },
-      submittedAt: effectiveSubmittedAt,
+      submittedAt,
     }
 
     response.status(200).json(result)
 
     void runHashingPipelineAsync({
-      artworkId,
+      contentId,
       storage,
     })
   } catch (error) {
@@ -151,7 +131,7 @@ export async function finalizeArtworkUploadHandler(
 }
 
 interface HashingPipelineParams {
-  artworkId: string
+  contentId: string
   storage: S3StorageReference
 }
 
@@ -159,13 +139,13 @@ async function runHashingPipelineAsync(
   params: HashingPipelineParams
 ): Promise<void> {
   const firestore = getFirestore()
-  const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.artworkId)
+  const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(params.contentId)
 
   try {
     const snapshot = await docRef.get()
     if (!snapshot.exists) {
       logger.warn('Skip hashing pipeline: artwork not found', {
-        artworkId: params.artworkId,
+        contentId: params.contentId,
       })
       return
     }
@@ -173,14 +153,14 @@ async function runHashingPipelineAsync(
     const artwork = snapshot.data() as StoredArtworkDocument
     if (artwork.protection.status === 'hashed') {
       logger.info('Skip hashing pipeline: already hashed', {
-        artworkId: params.artworkId,
+        contentId: params.contentId,
       })
       return
     }
 
     if (artwork.protection.status !== 'uploaded') {
       logger.info('Skip hashing pipeline: status is not uploaded', {
-        artworkId: params.artworkId,
+        contentId: params.contentId,
         status: artwork.protection.status,
       })
       return
@@ -221,7 +201,7 @@ async function runHashingPipelineAsync(
     })
 
     logger.error('Hashing pipeline failed', {
-      artworkId: params.artworkId,
+      contentId: params.contentId,
       errorMessage,
     })
   }

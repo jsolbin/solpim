@@ -29,16 +29,17 @@ export async function getArtworkProtectionStatusHandler(
     const artworkId = validateRequiredString(body.artworkId, 'artworkId')
 
     const firestore = getFirestore()
-    const snapshot = await firestore
+    const snapshots = await firestore
       .collection(ARTWORKS_COLLECTION)
-      .doc(artworkId)
+      .where('artworkId', '==', artworkId)
       .get()
 
-    if (!snapshot.exists) {
-      throw new HttpError(404, 'Artwork not found.')
+    if (snapshots.empty) {
+      throw new HttpError(404, 'Artwork protection record not found.')
     }
 
-    const artwork = snapshot.data() as StoredArtworkDocument
+    const firstDoc = snapshots.docs[0]
+    const artwork = firstDoc.data() as StoredArtworkDocument
 
     response.status(200).json({
       id: artwork.artworkId,

@@ -4,6 +4,15 @@ export type ArtworkCategoryName =
   | 'Sculpture'
   | 'Design'
   | 'Media Art'
+  | 'Photography'
+  | 'Illustration'
+  | 'Animation'
+  | 'Fashion'
+  | 'Installation'
+  | 'Video Art'
+  | 'Crafts'
+  | 'Digital Art'
+  | 'Other'
 
 export interface Category {
   id: string

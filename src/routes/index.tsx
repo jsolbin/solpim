@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import Layout from '@/layouts'
 import AdminPage from '@/pages/AdminPage'
 import ArtworkDetailPage from '@/pages/ArtworkDetailPage'
+import ArtworkManagementPage from '@/pages/ArtworkManagementPage'
 import GalleryPage from '@/pages/GalleryPage'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'submit', element: <SubmitArtworkPage /> },
+      { path: 'artwork-management', element: <ArtworkManagementPage /> },
       { path: 'admin', element: <AdminPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },

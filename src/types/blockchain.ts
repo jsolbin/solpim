@@ -19,6 +19,7 @@ export interface S3ObjectReference {
 
 export interface ProtectedArtworkRecord {
   id: string
+  artworkId?: string
   title: string
   imageName: string
   contentId?: string
@@ -26,6 +27,19 @@ export interface ProtectedArtworkRecord {
   createdAt: string
   updatedAt?: string
   protection: BlockchainProtection
+}
+
+export interface PendingArtworkGroup {
+  artworkId: string
+  title: string
+  ownerUid?: string
+  createdAt: string
+  updatedAt?: string
+  images: Array<{
+    contentId: string
+    imageName: string
+    status: BlockchainProtectionStatus
+  }>
 }
 
 export interface BlockchainProtection {

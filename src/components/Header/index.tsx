@@ -211,6 +211,15 @@ function Header() {
                     Edit profile
                   </MenuItem>
                   <MenuItem
+                    onClick={() => {
+                      closeProfileMenu()
+                      navigate('/artwork-management')
+                    }}
+                    sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
+                  >
+                    My artwork management
+                  </MenuItem>
+                  <MenuItem
                     onClick={handleLogout}
                     sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
                   >

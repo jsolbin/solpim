@@ -18,15 +18,12 @@ import { updateCurrentUserProfile } from '@/firebase/auth'
 import { auth, db } from '@/firebase/config'
 import { centeredPageSx, formFieldSx, formPageSx } from '@/styles/page'
 
+import { profileImageButtonSx, selectedProfileImageButtonSx } from './styles'
 import {
-  profileImageButtonSx,
-  selectedProfileImageButtonSx,
-} from './styles'
-import {
-  getProfileErrorMessage,
-  getProfileImageState,
   type ProfileImageOption,
   type ProfileRole,
+  getProfileErrorMessage,
+  getProfileImageState,
 } from './utils'
 
 export default function ProfilePage() {
@@ -166,9 +163,20 @@ export default function ProfilePage() {
           value={name}
         />
 
-        <Button disabled={isSubmitting} fullWidth type="submit">
-          {isSubmitting ? 'Saving...' : 'Save changes'}
-        </Button>
+        <Stack spacing={1.5}>
+          <Button disabled={isSubmitting} fullWidth type="submit">
+            {isSubmitting ? 'Saving...' : 'Save changes'}
+          </Button>
+
+          <Button
+            fullWidth
+            onClick={() => navigate('/artwork-management')}
+            type="button"
+            variant="white"
+          >
+            My artwork management
+          </Button>
+        </Stack>
       </Stack>
     </Box>
   )
