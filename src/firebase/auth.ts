@@ -38,6 +38,12 @@ export interface LoginInput {
 export interface UpdateUserProfileInput {
   name: string
   profileImageUrl?: string
+  backgroundImageUrl?: string
+  country?: string
+  university?: string
+  department?: string
+  major?: string
+  expectedGraduationDate?: string
 }
 
 export const AUTH_PROFILE_UPDATED_EVENT = 'auth-profile-updated'
@@ -71,6 +77,7 @@ export async function signUpStudentWithEmail({
     profileImageUrl,
     university,
     department,
+    major: department,
     role: 'student',
     universityVerificationStatus: 'pending',
     createdAt: serverTimestamp(),
@@ -205,15 +212,13 @@ export async function updateCurrentUserProfile({
     photoURL: nextProfileImageUrl,
   })
 
-  await setDoc(
-    doc(db, 'users', user.uid),
-    {
-      name,
-      profileImageUrl: nextProfileImageUrl,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  )
+  const profileData: Record<string, unknown> = {
+    name,
+    profileImageUrl: nextProfileImageUrl,
+    updatedAt: serverTimestamp(),
+  }
+
+  await setDoc(doc(db, 'users', user.uid), profileData, { merge: true })
 
   window.dispatchEvent(new Event(AUTH_PROFILE_UPDATED_EVENT))
 

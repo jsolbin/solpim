@@ -8,6 +8,7 @@ import ArtworkManagementPage from '@/pages/ArtworkManagementPage'
 import GalleryPage from '@/pages/GalleryPage'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
+import MessagesPage from '@/pages/MessagesPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProfilePage from '@/pages/ProfilePage'
 import SignupPage from '@/pages/SignupPage'
@@ -28,6 +29,8 @@ export const router = createBrowserRouter([
       { path: 'artwork-management', element: <ArtworkManagementPage /> },
       { path: 'admin', element: <AdminPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'profile/:userId', element: <ProfilePage /> },
+      { path: 'messages', element: <MessagesPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
