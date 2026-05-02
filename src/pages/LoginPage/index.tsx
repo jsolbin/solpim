@@ -10,6 +10,7 @@ import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { doc, getDoc } from 'firebase/firestore'
 
 import Button from '@/components/Button'
 import {
@@ -18,6 +19,7 @@ import {
   loginWithEmail,
   resendVerificationEmail,
 } from '@/firebase/auth'
+import { db } from '@/firebase/config'
 import { centeredPageSx, formFieldSx, formPageSx } from '@/styles/page'
 
 import { getLoginErrorMessage } from './utils'
@@ -44,12 +46,24 @@ function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      await loginWithEmail({
+      const user = await loginWithEmail({
         email: email.trim(),
         password,
       })
 
-      navigate('/gallery')
+      try {
+        const snapshot = await getDoc(doc(db, 'users', user.uid))
+        const role = snapshot.data()?.role
+        console.log('[LoginPage] User role:', role)
+        if (role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/gallery')
+        }
+      } catch (error) {
+        console.error('[LoginPage] Failed to fetch user role:', error)
+        navigate('/gallery')
+      }
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error))
       setShowResendVerification(
@@ -86,8 +100,15 @@ function LoginPage() {
     setIsGoogleSubmitting(true)
 
     try {
-      await loginVisitorWithGoogle()
-      navigate('/gallery')
+      const user = await loginVisitorWithGoogle()
+      const snapshot = await getDoc(doc(db, 'users', user.uid))
+      const role = snapshot.data()?.role
+      console.log('[GoogleLogin] User role:', role)
+      if (role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/gallery')
+      }
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error))
     } finally {
@@ -98,7 +119,12 @@ function LoginPage() {
   return (
     <>
       <Box component="main" sx={centeredPageSx}>
-        <Stack component="form" onSubmit={handleSubmit} spacing={3} sx={formPageSx}>
+        <Stack
+          component="form"
+          onSubmit={handleSubmit}
+          spacing={3}
+          sx={formPageSx}
+        >
           <Box>
             <Typography variant="h3">Log in</Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }} variant="body1">
