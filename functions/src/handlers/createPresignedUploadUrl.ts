@@ -11,12 +11,15 @@ import {
   HttpResponse,
 } from '../shared/http'
 import { buildObjectKey } from '../shared/s3'
+import { buildUploadRequestedArtworkDocument } from '../shared/protectedArtwork'
 import type {
   PresignedUploadRequestBody,
   PresignedUploadResponseBody,
-  StoredArtworkDocument,
 } from '../shared/types'
-import { validateRequiredString } from '../shared/validation'
+import {
+  validateImageUploadInput,
+  validateRequiredString,
+} from '../shared/validation'
 
 export async function createPresignedUploadUrlHandler(
   request: HttpRequest,
@@ -32,6 +35,7 @@ export async function createPresignedUploadUrlHandler(
     const fileType = validateRequiredString(body.fileType, 'fileType')
     const artworkId = validateRequiredString(body.artworkId, 'artworkId')
     const contentId = validateRequiredString(body.contentId, 'contentId')
+    validateImageUploadInput(fileName, 0)
 
     const ownerUid = await verifyAuthTokenFromHeader(
       request.header('authorization'),
@@ -61,42 +65,27 @@ export async function createPresignedUploadUrlHandler(
     const firestore = getFirestore()
     const docRef = firestore.collection('protectedArtworks').doc(artworkId)
     const now = new Date().toISOString()
-    const storedArtwork: StoredArtworkDocument = {
+    const storage = {
+      provider: 's3' as const,
+      bucketName,
+      objectKey,
+      region,
+    }
+    const storedArtwork = buildUploadRequestedArtworkDocument({
       artworkId,
       contentId,
       ownerUid,
       title: '',
       imageName: fileName,
-      protection: {
-        status: 'upload_requested',
-        storage: {
-          provider: 's3',
-          bucketName,
-          objectKey,
-          region,
-        },
-        requestedAt: now,
-      },
-      storage: {
-        provider: 's3',
-        bucketName,
-        objectKey,
-        region,
-      },
-      createdAt: now,
-      updatedAt: now,
-    }
+      storage,
+      now,
+    })
 
     await docRef.set(storedArtwork, { merge: true })
 
     const payload: PresignedUploadResponseBody = {
       uploadUrl,
-      storage: {
-        provider: 's3',
-        bucketName,
-        objectKey,
-        region,
-      },
+      storage,
       expiresAt,
     }
 

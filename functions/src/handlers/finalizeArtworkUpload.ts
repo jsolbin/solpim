@@ -1,10 +1,10 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
-import { createHash } from 'node:crypto'
 
 import { verifyAuthTokenFromHeader } from '../shared/auth'
 import { mustGetEnv } from '../shared/env'
+import { createImageHash } from '../shared/hash'
 import {
   HttpRequest,
   HttpResponse,
@@ -17,12 +17,17 @@ import {
   getUploadedObjectBytes,
   headUploadedObject,
 } from '../shared/s3'
+import { buildFinalizedArtworkDocument } from '../shared/protectedArtwork'
 import type {
   FinalizeUploadRequestBody,
   FinalizeUploadResponseBody,
   StoredArtworkDocument,
 } from '../shared/types'
-import { validateRequiredString } from '../shared/validation'
+import {
+  validateImageUploadInput,
+  validateRequiredString,
+  validateS3StorageReference,
+} from '../shared/validation'
 
 const ARTWORKS_COLLECTION = 'protectedArtworks'
 
@@ -40,7 +45,7 @@ export async function finalizeArtworkUploadHandler(
     const contentId = validateRequiredString(body.contentId, 'contentId')
     const title = validateRequiredString(body.title, 'title')
     const imageName = validateRequiredString(body.imageName, 'imageName')
-    const storage = validateStorage(body.storage)
+    const storage = validateS3StorageReference(body.storage)
 
     const ownerUid = await verifyAuthTokenFromHeader(
       request.header('authorization'),
@@ -63,6 +68,7 @@ export async function finalizeArtworkUploadHandler(
     const contentType = headResult.ContentType ?? 'application/octet-stream'
     const contentLength = headResult.ContentLength ?? 0
     const submittedAt = new Date().toISOString()
+    validateImageUploadInput(imageName, contentLength)
 
     const firestore = getFirestore()
     const docRef = firestore.collection(ARTWORKS_COLLECTION).doc(contentId)
@@ -75,35 +81,21 @@ export async function finalizeArtworkUploadHandler(
         return
       }
 
-      const payload: StoredArtworkDocument = {
+      const payload = buildFinalizedArtworkDocument({
         artworkId,
         contentId,
         ownerUid,
         title,
         imageName,
         storage,
-        protection: {
-          status: 'uploaded',
-          storage,
-          requestedAt: submittedAt,
-          uploadedAt: submittedAt,
-          verifiedStorage: {
-            objectKey: storage.objectKey,
-            contentType,
-            contentLength,
-            eTag: headResult.ETag ?? null,
-          },
-        },
+        submittedAt,
         verifiedStorage: {
           objectKey: storage.objectKey,
           contentType,
           contentLength,
           eTag: headResult.ETag ?? null,
         },
-        submittedAt,
-        createdAt: submittedAt,
-        updatedAt: submittedAt,
-      }
+      })
 
       transaction.set(docRef, payload)
     })
@@ -150,7 +142,14 @@ async function runHashingPipelineAsync(
       return
     }
 
-    const artwork = snapshot.data() as StoredArtworkDocument
+    const artwork = snapshot.data() as StoredArtworkDocument | undefined
+    if (!artwork) {
+      logger.warn('Skip hashing pipeline: artwork payload is empty', {
+        contentId: params.contentId,
+      })
+      return
+    }
+
     if (artwork.protection.status === 'hashed') {
       logger.info('Skip hashing pipeline: already hashed', {
         contentId: params.contentId,
@@ -178,7 +177,7 @@ async function runHashingPipelineAsync(
 
     const s3Client = new S3Client({ region: params.storage.region })
     const objectBytes = await getUploadedObjectBytes(s3Client, params.storage)
-    const imageHash = createHash('sha256').update(objectBytes).digest('hex')
+    const imageHash = createImageHash(objectBytes)
 
     const hashedAt = new Date().toISOString()
     await docRef.update({
@@ -204,25 +203,5 @@ async function runHashingPipelineAsync(
       contentId: params.contentId,
       errorMessage,
     })
-  }
-}
-
-function validateStorage(
-  value: FinalizeUploadRequestBody['storage']
-): S3StorageReference {
-  if (!value || typeof value !== 'object') {
-    throw new HttpError(400, 'storage is required.')
-  }
-
-  const provider = validateRequiredString(value.provider, 'storage.provider')
-  if (provider !== 's3') {
-    throw new HttpError(400, 'storage.provider must be s3.')
-  }
-
-  return {
-    provider: 's3',
-    bucketName: validateRequiredString(value.bucketName, 'storage.bucketName'),
-    objectKey: validateRequiredString(value.objectKey, 'storage.objectKey'),
-    region: validateRequiredString(value.region, 'storage.region'),
   }
 }

@@ -23,6 +23,11 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 import { auth, db } from '@/firebase/config'
 import { requestFinalizeUpload, uploadFileDirectly } from '@/utils/protection'
+import {
+  MAX_IMAGE_FILE_SIZE_BYTES,
+  isAllowedImageFile,
+  isAllowedImageFileSize,
+} from '@/utils/uploadValidation'
 
 function SubmitArtworkPage() {
   const navigate = useNavigate()
@@ -68,29 +73,39 @@ function SubmitArtworkPage() {
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files ? Array.from(event.target.files) : []
 
-    // Filter out unsupported formats (HEIC, HEIF)
     const supported: File[] = []
     const unsupported: string[] = []
+    const oversized: string[] = []
 
     selected.forEach((file) => {
-      const isHeic =
-        file.type === 'image/heic' ||
-        file.type === 'image/heif' ||
-        file.name.toLowerCase().endsWith('.heic') ||
-        file.name.toLowerCase().endsWith('.heif')
-      if (isHeic) {
+      if (!isAllowedImageFile(file)) {
         unsupported.push(file.name)
-      } else {
-        supported.push(file)
+        return
       }
+
+      if (!isAllowedImageFileSize(file)) {
+        oversized.push(file.name)
+        return
+      }
+
+      supported.push(file)
     })
 
     if (unsupported.length > 0) {
       setErrorMessage(
-        `Unsupported image format: ${unsupported.join(', ')}. Please use JPEG, PNG, or WebP. You can convert HEIC to JPEG using your device's built-in tools or an online converter.`
+        `Unsupported image format: ${unsupported.join(', ')}. Please use JPEG, PNG, or WebP.`
       )
+      return
     }
 
+    if (oversized.length > 0) {
+      setErrorMessage(
+        `File too large: ${oversized.join(', ')}. Maximum size is ${Math.floor(MAX_IMAGE_FILE_SIZE_BYTES / (1024 * 1024))}MB per image.`
+      )
+      return
+    }
+
+    setErrorMessage(null)
     setFiles((prev) => [...prev, ...supported])
   }
 

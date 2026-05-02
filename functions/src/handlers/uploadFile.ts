@@ -8,7 +8,10 @@ import { handleCommonHttpRequest, handleHttpError } from '../shared/http'
 import { HttpError } from '../shared/httpError'
 import { buildObjectKey } from '../shared/s3'
 import type { PresignedUploadResponseBody } from '../shared/types'
-import { validateRequiredString } from '../shared/validation'
+import {
+  validateImageUploadInput,
+  validateRequiredString,
+} from '../shared/validation'
 
 interface UploadFileRequestBody {
   artworkId?: string
@@ -41,6 +44,8 @@ export async function uploadFileHandler(
     if (buffer.length === 0) {
       throw new HttpError(400, 'File body is required.')
     }
+
+    validateImageUploadInput(fileName, buffer.length)
 
     const bucketName = mustGetEnv('S3_BUCKET_NAME')
     const region = mustGetEnv('AWS_REGION')
