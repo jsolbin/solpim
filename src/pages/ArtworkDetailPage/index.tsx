@@ -23,13 +23,17 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
-  arrayRemove,
-  arrayUnion,
+  collection,
+  deleteDoc,
   doc,
   getDoc,
-  updateDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
 } from 'firebase/firestore'
 
+import ContactDialog from '@/components/ContactDialog'
 import { DEFAULT_PROFILE_IMAGE_URL } from '@/constants/profileIcons'
 import { auth, db } from '@/firebase/config'
 import { contentContainerSx, contentPageSx } from '@/styles/page'
@@ -38,6 +42,8 @@ import type {
   ProtectedArtworkRecord,
   S3ObjectReference,
 } from '@/types/blockchain'
+import type { ContactIntent } from '@/types/notification'
+import { createContactNotification } from '@/utils/notifications'
 import { requestProtectedArtworkStatus } from '@/utils/protection'
 
 type ArtworkImage = {
@@ -211,10 +217,12 @@ function ArtworkDetailPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [likedArtworkIds, setLikedArtworkIds] = useState<string[]>([])
+  const [likeCount, setLikeCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdatingLike, setIsUpdatingLike] = useState(false)
   const [noticeMessage, setNoticeMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -226,15 +234,15 @@ function ArtworkDetailPage() {
       }
 
       try {
-        const userSnapshot = await getDoc(doc(db, 'users', user.uid))
-        const likedArtworkIdsFromProfile = userSnapshot.data()?.likedArtworkIds
+        const likedSnapshot = await getDocs(
+          query(collection(db, 'likes'), where('userId', '==', user.uid))
+        )
 
         setLikedArtworkIds(
-          Array.isArray(likedArtworkIdsFromProfile)
-            ? likedArtworkIdsFromProfile.filter(
-                (value): value is string => typeof value === 'string'
-              )
-            : []
+          likedSnapshot.docs
+            .map((snapshot) => snapshot.data())
+            .map((record) => record.artworkId)
+            .filter((value): value is string => typeof value === 'string')
         )
       } catch {
         setLikedArtworkIds([])
@@ -299,6 +307,7 @@ function ArtworkDetailPage() {
 
         if (isMounted) {
           setArtwork(normalizedArtwork)
+          setLikeCount(normalizedArtwork.likeCount ?? 0)
           setImageUrls(
             nextImageUrls.length > 0
               ? nextImageUrls
@@ -362,6 +371,23 @@ function ArtworkDetailPage() {
         }
 
         try {
+          const likeSnapshot = await getDocs(
+            query(
+              collection(db, 'likes'),
+              where('artworkId', '==', normalizedArtwork.artworkId ?? id)
+            )
+          )
+
+          if (isMounted) {
+            setLikeCount(likeSnapshot.size)
+          }
+        } catch {
+          if (isMounted) {
+            setLikeCount(normalizedArtwork.likeCount ?? 0)
+          }
+        }
+
+        try {
           const protectionRecord = await requestProtectedArtworkStatus({
             artworkId: normalizedArtwork.artworkId ?? id,
           })
@@ -405,7 +431,6 @@ function ArtworkDetailPage() {
     }
   }, [id, navState?.artwork])
 
-  const likeCount = artwork?.likeCount ?? 0
   const isLiked = Boolean(id && likedArtworkIds.includes(id))
   const displayImages =
     imageUrls.length > 0
@@ -429,27 +454,25 @@ function ArtworkDetailPage() {
     setIsUpdatingLike(true)
     setErrorMessage('')
 
-    const userRef = doc(db, 'users', currentUserId)
     const nextLiked = isLiked
       ? likedArtworkIds.filter((artworkId) => artworkId !== id)
       : [...likedArtworkIds, id]
+    const likeDocId = `${currentUserId}_${id}`
 
     try {
-      await updateDoc(userRef, {
-        likedArtworkIds: isLiked ? arrayRemove(id) : arrayUnion(id),
-      })
+      if (isLiked) {
+        await deleteDoc(doc(db, 'likes', likeDocId))
+      } else {
+        await setDoc(doc(db, 'likes', likeDocId), {
+          userId: currentUserId,
+          artworkId: id,
+          createdAt: new Date().toISOString(),
+        })
+      }
 
       setLikedArtworkIds(nextLiked)
-      setArtwork((currentArtwork) =>
-        currentArtwork
-          ? {
-              ...currentArtwork,
-              likeCount: Math.max(
-                0,
-                (currentArtwork.likeCount ?? 0) + (isLiked ? -1 : 1)
-              ),
-            }
-          : currentArtwork
+      setLikeCount((currentCount) =>
+        Math.max(0, currentCount + (isLiked ? -1 : 1))
       )
     } catch (error) {
       setErrorMessage(
@@ -469,6 +492,30 @@ function ArtworkDetailPage() {
     } catch {
       setNoticeMessage('Failed to copy link to clipboard.')
     }
+  }
+
+  const handleContactArtist = async (contactIntent: ContactIntent) => {
+    if (!currentUserId) {
+      navigate('/login')
+      return
+    }
+
+    if (!artist?.id || !artwork?.artworkId) {
+      return
+    }
+
+    await createContactNotification({
+      receiverId: artist.id,
+      senderId: currentUserId,
+      senderName:
+        auth.currentUser?.displayName || auth.currentUser?.email || 'User',
+      contextType: 'artwork',
+      contactIntent,
+      artworkId: artwork.artworkId,
+      artworkTitle: artwork.title,
+    })
+
+    setNoticeMessage('Contact request sent.')
   }
 
   const protectionStatus = protection?.protection.status
@@ -691,6 +738,16 @@ function ArtworkDetailPage() {
                       Share
                     </Button>
                   </Stack>
+
+                  {artist?.id && artist.id !== currentUserId ? (
+                    <Button
+                      fullWidth
+                      onClick={() => setIsContactDialogOpen(true)}
+                      variant="contained"
+                    >
+                      Contact artist
+                    </Button>
+                  ) : null}
                 </Stack>
               </Paper>
 
@@ -806,6 +863,15 @@ function ArtworkDetailPage() {
           </Box>
         </Stack>
       </Stack>
+
+      <ContactDialog
+        artworkTitle={artwork.title}
+        contextType="artwork"
+        open={isContactDialogOpen}
+        onClose={() => setIsContactDialogOpen(false)}
+        onSubmit={handleContactArtist}
+        recipientName={artist?.name ?? artwork.artistName ?? 'Artist'}
+      />
     </Box>
   )
 }

@@ -34,6 +34,7 @@ const headerActionSx = {
 function Header() {
   const navigate = useNavigate()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [username, setUsername] = useState('User')
   const [profileImageUrl, setProfileImageUrl] = useState(
     DEFAULT_PROFILE_IMAGE_URL
@@ -50,6 +51,7 @@ function Header() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoggedIn(Boolean(user))
+      setCurrentUserId(user?.uid ?? '')
       setUsername(user?.displayName || user?.email || 'User')
       setProfileImageUrl(user?.photoURL || DEFAULT_PROFILE_IMAGE_URL)
 
@@ -73,6 +75,7 @@ function Header() {
     const refreshCurrentUser = async () => {
       if (!auth.currentUser) {
         setIsLoggedIn(false)
+        setCurrentUserId('')
         setUsername('User')
         setProfileImageUrl(DEFAULT_PROFILE_IMAGE_URL)
         return
@@ -105,7 +108,12 @@ function Header() {
 
   const goToProfile = () => {
     closeProfileMenu()
-    navigate('/profile')
+    navigate(currentUserId ? `/profile/${currentUserId}` : '/profile')
+  }
+
+  const goToMessages = () => {
+    closeProfileMenu()
+    navigate('/messages')
   }
 
   const handleLogout = async () => {
@@ -222,7 +230,13 @@ function Header() {
                     onClick={goToProfile}
                     sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
                   >
-                    Edit profile
+                    My profile
+                  </MenuItem>
+                  <MenuItem
+                    onClick={goToMessages}
+                    sx={{ fontSize: '0.95rem', minHeight: 42, px: 2 }}
+                  >
+                    Message box
                   </MenuItem>
                   {userRole === 'student' ? (
                     <MenuItem
