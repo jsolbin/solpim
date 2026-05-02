@@ -67,7 +67,31 @@ function SubmitArtworkPage() {
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files ? Array.from(event.target.files) : []
-    setFiles((prev) => [...prev, ...selected])
+
+    // Filter out unsupported formats (HEIC, HEIF)
+    const supported: File[] = []
+    const unsupported: string[] = []
+
+    selected.forEach((file) => {
+      const isHeic =
+        file.type === 'image/heic' ||
+        file.type === 'image/heif' ||
+        file.name.toLowerCase().endsWith('.heic') ||
+        file.name.toLowerCase().endsWith('.heif')
+      if (isHeic) {
+        unsupported.push(file.name)
+      } else {
+        supported.push(file)
+      }
+    })
+
+    if (unsupported.length > 0) {
+      setErrorMessage(
+        `Unsupported image format: ${unsupported.join(', ')}. Please use JPEG, PNG, or WebP. You can convert HEIC to JPEG using your device's built-in tools or an online converter.`
+      )
+    }
+
+    setFiles((prev) => [...prev, ...supported])
   }
 
   const handleRemoveImage = (idx: number) => {

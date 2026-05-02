@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
 import { contentContainerSx, contentPageSx } from '@/styles/page'
+import type { Artwork } from '@/types/artwork'
 import type { ProtectedArtworkRecord } from '@/types/blockchain'
 import { requestProtectedArtworkStatus } from '@/utils/protection'
 
@@ -27,6 +28,9 @@ function ArtworkDetailPage() {
   const { id = '' } = useParams()
   const [artwork, setArtwork] = useState<ProtectedArtworkRecord | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const location = useLocation()
+  const navState = location.state as { artwork?: Artwork } | null
+  const navArtwork = navState?.artwork
 
   useEffect(() => {
     let isMounted = true
@@ -78,6 +82,17 @@ function ArtworkDetailPage() {
     <Box component="main" sx={contentPageSx}>
       <Stack spacing={4} sx={contentContainerSx}>
         <Typography variant="h3">Artwork Detail</Typography>
+
+        {navArtwork ? (
+          <Box sx={{ mt: 2 }}>
+            <Box
+              component="img"
+              src={navArtwork.thumbnailUrl}
+              alt={navArtwork.thumbnailAlt}
+              sx={{ maxWidth: '100%', borderRadius: 2 }}
+            />
+          </Box>
+        ) : null}
 
         <Stack spacing={1}>
           <Typography variant="h5">{artwork.title}</Typography>
