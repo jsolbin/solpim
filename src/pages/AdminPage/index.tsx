@@ -194,14 +194,23 @@ function AdminPage() {
         updatedAt: new Date().toISOString(),
       })
 
-      await createAdminNotification({
-        receiverId: artwork.ownerUid,
-        type: 'approval',
-        artworkId: artwork.artworkId,
-        message: `Your artwork "${artwork.title}" has been approved.`,
-      })
+      let notificationFailed = false
+      try {
+        await createAdminNotification({
+          receiverId: artwork.ownerUid,
+          type: 'approval',
+          artworkId: artwork.artworkId,
+          message: `Your artwork "${artwork.title}" has been approved.`,
+        })
+      } catch {
+        notificationFailed = true
+      }
 
-      setSuccessMessage(`Artwork "${artwork.title}" approved successfully.`)
+      setSuccessMessage(
+        notificationFailed
+          ? `Artwork "${artwork.title}" approved successfully, but the notification could not be sent.`
+          : `Artwork "${artwork.title}" approved successfully.`
+      )
       await loadArtworks()
     } catch (error) {
       setErrorMessage(
@@ -247,14 +256,23 @@ function AdminPage() {
         updatedAt: new Date().toISOString(),
       })
 
-      await createAdminNotification({
-        receiverId: rejectTarget.ownerUid,
-        type: 'rejection',
-        artworkId: rejectTarget.artworkId,
-        message: `Your artwork "${rejectTarget.title}" was rejected. Reason: ${trimmedReason}`,
-      })
+      let notificationFailed = false
+      try {
+        await createAdminNotification({
+          receiverId: rejectTarget.ownerUid,
+          type: 'rejection',
+          artworkId: rejectTarget.artworkId,
+          message: `Your artwork "${rejectTarget.title}" was rejected. Reason: ${trimmedReason}`,
+        })
+      } catch {
+        notificationFailed = true
+      }
 
-      setSuccessMessage(`Artwork "${rejectTarget.title}" rejected.`)
+      setSuccessMessage(
+        notificationFailed
+          ? `Artwork "${rejectTarget.title}" rejected, but the notification could not be sent.`
+          : `Artwork "${rejectTarget.title}" rejected.`
+      )
       closeRejectDialog()
       await loadArtworks()
     } catch (error) {
