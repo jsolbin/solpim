@@ -2,6 +2,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 
 import { HttpError } from './httpError'
+import { hasRequiredRole } from './permissions'
 
 export type UserRole = 'visitor' | 'student' | 'artist' | 'admin'
 
@@ -37,7 +38,7 @@ export async function requireRoleFromHeader(
   const snapshot = await getFirestore().collection('users').doc(uid).get()
   const role = snapshot.data()?.role as UserRole | undefined
 
-  if (!role || !allowedRoles.includes(role)) {
+  if (!hasRequiredRole(role, allowedRoles)) {
     throw new HttpError(403, 'Insufficient permissions.')
   }
 
